@@ -428,8 +428,8 @@ function drawPulses() {
 // ── Bubble layout ────────────────────────────────────────────────
 const scene = document.getElementById('scene');
 
-let maxR = Math.min(W, H) * 0.092;
-let minR = Math.min(W, H) * 0.012;
+let maxR = Math.min(W, H) * 0.058;
+let minR = Math.min(W, H) * 0.008;
 const maxScore = 98;
 
 let bubbleData = []; // declared in outer scope so float loop can access it
@@ -459,8 +459,8 @@ async function loadAndBuild() {
 
 function build() {
   setSize();
-  maxR = Math.min(W, H) * 0.092;
-  minR = Math.min(W, H) * 0.012;
+  maxR = Math.min(W, H) * 0.058;
+  minR = Math.min(W, H) * 0.008;
   scene.innerHTML = '';
   bubbleData = [];
 
