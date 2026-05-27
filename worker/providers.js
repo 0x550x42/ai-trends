@@ -22,7 +22,7 @@ const openai = {
           { role: 'user', content: prompt },
         ],
         response_format: { type: 'json_object' },
-        max_tokens: 6000,
+        max_tokens: 12000,
         temperature: 0.2,
       }),
     }
@@ -51,7 +51,7 @@ const claude = {
       },
       body: JSON.stringify({
         model: 'claude-sonnet-4-20250514',
-        max_tokens: 6000,
+        max_tokens: 12000,
         tools: [{ type: 'web_search_20250305', name: 'web_search' }],
         messages: [{ role: 'user', content: prompt }],
       }),
