@@ -1,7 +1,9 @@
 {
   "scripts": {
-    "deploy": "cd worker && npx wrangler deploy",
-    "refresh": "source .env && curl -s -X POST https://ai-trends-worker.YOURSUBDOMAIN.workers.dev/refresh -H \"x-refresh-token: $REFRESH_TOKEN\" | jq .",
-    "deploy:refresh": "npm run deploy && npm run refresh"
+    "deploy:worker": "cd worker && npx wrangler deploy",
+    "deploy:frontend": "npx wrangler pages deploy frontend --project-name ai-trends --commit-dirty=true",
+    "deploy": "npm run deploy:worker && npm run deploy:frontend",
+    "refresh": "source .env && curl -s -X POST https://ai-trends-worker.ud0103.workers.dev/refresh -H \"x-refresh-token: $REFRESH_TOKEN\" | jq .",
+    "deploy:all": "npm run deploy && npm run refresh"
   }
 }

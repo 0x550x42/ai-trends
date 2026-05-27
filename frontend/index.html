@@ -191,7 +191,7 @@
 
 <script>
 // ── Worker URL ────────────────────────────────────────────────────
-const WORKER_URL = 'https://ai-trends-worker.YOURSUBDOMAIN.workers.dev';
+const WORKER_URL = 'https://ai-trends-worker.ud0103.workers.dev';
 
 // ── Data (populated from KV via worker) ───────────────────────────
 let TOOLS = [
@@ -376,6 +376,7 @@ async function loadAndBuild() {
         color: t.color || '#4dd9ff',
         desc:  t.desc  || '',
       }));
+      console.log(`✅ [ai-trends] Live data loaded from worker: ${TOOLS.length} tools, generated at ${data.generatedAt}`);
       // Update date
       const d = new Date(data.generatedAt);
       const dateEl = document.querySelector('#title-block .date');
