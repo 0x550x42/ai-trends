@@ -12,7 +12,7 @@ Return a JSON object listing the top 100 most popular AI tools right now (no mar
 
 Rules:
 - Exactly 100 tools, sorted by score descending
-- score: spread scores across the FULL range 1-98. #1 = 98, #50 should be around 5. Use a realistic power-law distribution — top 5 tools score 70-98, middle tools 20-60, bottom tools 5-20. Do NOT bunch scores close together.
+- score: integer 20-98. #1 = 98, scores decrease gradually. Top 5 score 75-98, middle 50 score 35-65, bottom 50 score 20-34. NO tool should score below 20. Spread evenly — do NOT bunch scores.
 - trend: integer -30 to +30, week-over-week change
 - category: Assistant | Coding | Image | Video | Audio | Search | Platform | Model
 - domain: primary website domain only (no https://)
