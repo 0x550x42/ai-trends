@@ -191,7 +191,7 @@
 
 <script>
 // ── Worker URL ────────────────────────────────────────────────────
-const WORKER_URL = 'https://ai-trends-worker.ud0103.workers.dev';
+const WORKER_URL = 'https://ai-trends-worker.YOURSUBDOMAIN.workers.dev';
 
 // ── Data (populated from KV via worker) ───────────────────────────
 let TOOLS = [
@@ -372,11 +372,14 @@ async function loadAndBuild() {
     if (Array.isArray(data.tools) && data.tools.length > 0) {
       TOOLS = data.tools.map(t => ({
         ...t,
-        cat: t.category || t.cat || 'Other',
+        cat:   t.category || t.cat || 'Other',
+        color: t.color || '#4dd9ff',
+        desc:  t.desc  || '',
       }));
-      // Update subtitle date
+      // Update date
       const d = new Date(data.generatedAt);
-      document.getElementById('subtitle').textContent =
+      const dateEl = document.querySelector('#title-block .date');
+      if (dateEl) dateEl.textContent =
         `— ${d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase()} —`;
     }
   } catch (e) {
