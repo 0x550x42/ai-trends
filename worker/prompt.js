@@ -17,6 +17,6 @@ Rules:
 - category: Assistant | Coding | Image | Video | Audio | Search | Platform | Model
 - domain: primary website domain only (no https://)
 - color: brand hex color
-- desc: max 8 words
+- desc: max 5 words
 - launched: year as string`
 }
