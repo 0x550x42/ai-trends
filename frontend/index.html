@@ -1,0 +1,664 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>Global AI Popularity Pulse</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #030d1a;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #fff;
+    overflow: hidden;
+    width: 100vw; height: 100vh;
+  }
+
+  #title-block {
+    position: fixed;
+    top: 22px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 10;
+    pointer-events: none;
+  }
+  #title-block h1 {
+    font-size: 15px;
+    font-weight: 800;
+    letter-spacing: 0.25em;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #4dd9ff, #a78bfa, #4dd9ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% auto;
+    animation: shimmer 4s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: 200% center; } }
+  #title-block .date {
+    font-size: 10px;
+    letter-spacing: 0.2em;
+    color: #2a6a8a;
+    margin-top: 3px;
+    text-transform: uppercase;
+  }
+  #title-block .date::before,
+  #title-block .date::after {
+    content: '— ';
+  }
+
+  canvas { display:block; position:absolute; top:0; left:0; }
+
+  /* Bubble wrappers */
+  .bubble {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    will-change: transform;
+    transform: translate(-50%, -50%);
+    transition: transform 0.35s cubic-bezier(0.34, 1.56, 0.64, 1);
+  }
+  .bubble:hover { transform: translate(-50%, -50%) scale(1.15) !important; z-index: 50; }
+
+  .bubble-inner {
+    width: 100%; height: 100%;
+    border-radius: 50%;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    justify-content: center;
+    position: relative;
+    overflow: hidden;
+  }
+
+  .bubble-inner::before {
+    content: '';
+    position: absolute;
+    inset: 0;
+    border-radius: 50%;
+    background: radial-gradient(circle at 35% 30%, rgba(255,255,255,0.12), transparent 60%);
+    z-index: 2;
+    pointer-events: none;
+  }
+
+  .bubble img {
+    border-radius: 50%;
+    object-fit: contain;
+    position: relative;
+    z-index: 1;
+  }
+
+  .trend-label {
+    position: absolute;
+    bottom: -2px;
+    left: 50%;
+    transform: translateX(-50%);
+    font-size: 9px;
+    font-weight: 700;
+    white-space: nowrap;
+    z-index: 5;
+    padding: 1px 5px;
+    border-radius: 8px;
+  }
+  .trend-up   { color: #4ade80; background: rgba(0,0,0,0.5); }
+  .trend-down { color: #f87171; background: rgba(0,0,0,0.5); }
+
+  .rank-label {
+    position: absolute;
+    top: 2px; right: 4px;
+    font-size: 8px;
+    font-weight: 700;
+    color: rgba(255,255,255,0.35);
+    z-index: 5;
+  }
+
+  /* Tooltip */
+  .tooltip {
+    position: fixed;
+    background: rgba(5, 18, 38, 0.97);
+    border-radius: 14px;
+    padding: 16px 18px;
+    pointer-events: none;
+    opacity: 0;
+    transition: opacity 0.15s ease;
+    max-width: 250px;
+    z-index: 999;
+    backdrop-filter: blur(20px);
+  }
+  .tooltip.show { opacity: 1; }
+
+  .tt-head { display:flex; align-items:center; gap:10px; margin-bottom:10px; }
+  .tt-logo-wrap {
+    width:38px; height:38px; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    flex-shrink:0; overflow:hidden;
+    border: 2px solid rgba(255,255,255,0.1);
+  }
+  .tt-logo-wrap img { width:28px; height:28px; object-fit:contain; }
+  .tt-name { font-size:14px; font-weight:700; color:#f1f5f9; }
+  .tt-company { font-size:11px; color:#475569; margin-top:1px; }
+
+  .tt-score-row {
+    display: flex; align-items: center; gap: 8px;
+    margin-bottom: 10px;
+  }
+  .tt-score-bar {
+    flex: 1; height: 4px; border-radius: 2px;
+    background: rgba(255,255,255,0.06); overflow:hidden;
+  }
+  .tt-score-fill { height:100%; border-radius:2px; }
+  .tt-score-num { font-size:11px; font-weight:700; }
+
+  .tt-desc { font-size:11px; color:#94a3b8; line-height:1.6; margin-bottom:10px; }
+
+  .tt-pills { display:flex; flex-wrap:wrap; gap:5px; }
+  .tt-pill {
+    font-size:10px; padding:2px 8px;
+    border-radius:20px; background:rgba(255,255,255,0.06);
+    color:#64748b;
+  }
+  .tt-pill b { color:#94a3b8; font-weight:500; }
+</style>
+</head>
+<body>
+
+<canvas id="bg"></canvas>
+
+<div id="title-block">
+  <h1>Global AI Popularity Pulse</h1>
+  <div class="date">May 26, 2026</div>
+</div>
+
+<div id="scene"></div>
+
+<div class="tooltip" id="tt">
+  <div class="tt-head">
+    <div class="tt-logo-wrap"><img id="tt-img" src="" alt=""/></div>
+    <div>
+      <div class="tt-name"    id="tt-name"></div>
+      <div class="tt-company" id="tt-company"></div>
+    </div>
+  </div>
+  <div class="tt-score-row">
+    <div class="tt-score-bar"><div class="tt-score-fill" id="tt-fill"></div></div>
+    <div class="tt-score-num" id="tt-num"></div>
+  </div>
+  <div class="tt-desc" id="tt-desc"></div>
+  <div class="tt-pills" id="tt-pills"></div>
+</div>
+
+<script>
+// ── Worker URL ────────────────────────────────────────────────────
+const WORKER_URL = 'https://ai-trends-worker.YOURSUBDOMAIN.workers.dev';
+
+// ── Data (populated from KV via worker) ───────────────────────────
+let TOOLS = [
+  { name:'ChatGPT',      company:'OpenAI',        domain:'openai.com',          score:98, rank:1,  trend:35,  color:'#00d4ff', cat:'Chatbot',      launched:'Nov 2022', desc:'The world\'s most popular AI chatbot. Sparked mainstream AI adoption globally.' },
+  { name:'Gemini',       company:'Google',        domain:'google.com',          score:85, rank:2,  trend:69,  color:'#4285f4', cat:'Chatbot',      launched:'Feb 2024', desc:'Google\'s flagship multimodal AI, integrated into Search, Docs and Gmail.' },
+  { name:'Copilot',      company:'Microsoft',     domain:'microsoft.com',       score:78, rank:3,  trend:45,  color:'#00a4ef', cat:'Coding',       launched:'Jun 2021', desc:'AI assistant embedded across GitHub, VS Code and Microsoft 365.' },
+  { name:'Claude',       company:'Anthropic',     domain:'anthropic.com',       score:70, rank:4,  trend:28,  color:'#c084fc', cat:'Chatbot',      launched:'Mar 2023', desc:'Safety-focused AI known for nuanced long-context reasoning.' },
+  { name:'Meta AI',      company:'Meta',          domain:'meta.com',            score:65, rank:5,  trend:65,  color:'#0064e0', cat:'Chatbot',      launched:'Sep 2023', desc:'Meta\'s AI assistant across WhatsApp, Instagram and Facebook.' },
+  { name:'Midjourney',   company:'Midjourney',    domain:'midjourney.com',      score:60, rank:6,  trend:-8,  color:'#34d399', cat:'Image',        launched:'Jul 2022', desc:'Leading AI image generator known for painterly, cinematic quality.' },
+  { name:'Cursor',       company:'Anysphere',     domain:'cursor.com',          score:54, rank:7,  trend:42,  color:'#38bdf8', cat:'Coding',       launched:'Jan 2023', desc:'AI-native code editor that rewrites and generates code in full context.' },
+  { name:'Perplexity',   company:'Perplexity',    domain:'perplexity.ai',       score:50, rank:8,  trend:31,  color:'#fb923c', cat:'Search',       launched:'Aug 2022', desc:'AI search with live, cited answers. Google\'s biggest challenger.' },
+  { name:'Grok',         company:'xAI',           domain:'x.ai',                score:45, rank:9,  trend:-5,  color:'#e2e8f0', cat:'Chatbot',      launched:'Nov 2023', desc:'Elon Musk\'s witty AI with real-time access to X/Twitter data.' },
+  { name:'Suno',         company:'Suno AI',       domain:'suno.com',            score:42, rank:10, trend:55,  color:'#f472b6', cat:'Music',        launched:'Dec 2023', desc:'Text-to-music AI that generates full songs with vocals in seconds.' },
+  { name:'Runway',       company:'Runway',        domain:'runwayml.com',        score:38, rank:11, trend:18,  color:'#e879f9', cat:'Video',        launched:'Sep 2022', desc:'Professional AI video generation suite used by Hollywood studios.' },
+  { name:'ElevenLabs',   company:'ElevenLabs',    domain:'elevenlabs.io',       score:34, rank:12, trend:40,  color:'#f472b6', cat:'Voice',        launched:'Jan 2023', desc:'Hyper-realistic voice cloning and text-to-speech platform.' },
+  { name:'Bolt',         company:'StackBlitz',    domain:'bolt.new',            score:30, rank:13, trend:88,  color:'#60a5fa', cat:'Coding',       launched:'Oct 2024', desc:'Describe your app in plain English — Bolt builds and deploys it live.' },
+  { name:'DeepSeek',     company:'DeepSeek',      domain:'deepseek.com',        score:28, rank:14, trend:92,  color:'#06b6d4', cat:'Chatbot',      launched:'Jan 2024', desc:'Chinese open-source LLM that shocked the world with GPT-4 level quality.' },
+  { name:'Kling',        company:'Kuaishou',      domain:'klingai.com',         score:25, rank:15, trend:72,  color:'#a78bfa', cat:'Video',        launched:'Jun 2024', desc:'Chinese AI video generator producing 2-min cinematic clips.' },
+  { name:'Lovable',      company:'Lovable',       domain:'lovable.dev',         score:22, rank:16, trend:80,  color:'#f43f5e', cat:'Coding',       launched:'Jan 2024', desc:'Plain-English full-stack app builder that deploys instantly.' },
+  { name:'Pika',         company:'Pika Labs',     domain:'pika.art',            score:20, rank:17, trend:15,  color:'#c084fc', cat:'Video',        launched:'Nov 2023', desc:'AI video tool that animates images with fluid motion.' },
+  { name:'Mistral',      company:'Mistral AI',    domain:'mistral.ai',          score:18, rank:18, trend:8,   color:'#818cf8', cat:'Open Source',  launched:'Sep 2023', desc:'Fast, efficient European open-source LLM.' },
+  { name:'Notion AI',    company:'Notion',        domain:'notion.so',           score:16, rank:19, trend:-3,  color:'#94a3b8', cat:'Productivity', launched:'Feb 2023', desc:'AI writing and summarisation built into the Notion workspace.' },
+  { name:'Stable Diff',  company:'Stability AI',  domain:'stability.ai',        score:14, rank:20, trend:-18, color:'#34d399', cat:'Image',        launched:'Aug 2022', desc:'The open-source image model that started the AI art revolution.' },
+  { name:'Character AI', company:'Character.AI',  domain:'character.ai',        score:44, rank:21, trend:-12, color:'#f97316', cat:'Chatbot',      launched:'Sep 2022', desc:'Roleplay and chat with AI personas. Hugely popular with Gen Z.' },
+  { name:'Adobe Firefly',company:'Adobe',         domain:'adobe.com',           score:36, rank:22, trend:10,  color:'#ff0000', cat:'Image',        launched:'Mar 2023', desc:'Adobe\'s generative AI built into Photoshop and Creative Cloud.' },
+  { name:'HeyGen',       company:'HeyGen',        domain:'heygen.com',          score:29, rank:23, trend:48,  color:'#8b5cf6', cat:'Video',        launched:'Jun 2022', desc:'AI video avatars and talking head generation for business.' },
+  { name:'Windsurf',     company:'Codeium',       domain:'codeium.com',         score:27, rank:24, trend:60,  color:'#10b981', cat:'Coding',       launched:'Nov 2024', desc:'Agentic AI code editor with deep codebase understanding.' },
+  { name:'v0',           company:'Vercel',        domain:'vercel.com',          score:24, rank:25, trend:50,  color:'#ffffff', cat:'Coding',       launched:'Sep 2023', desc:'Describe a UI, get production-ready React code instantly.' },
+  { name:'Gamma',        company:'Gamma',         domain:'gamma.app',           score:21, rank:26, trend:25,  color:'#7c3aed', cat:'Productivity', launched:'Nov 2022', desc:'AI presentation and document builder. Replaces PowerPoint.' },
+  { name:'Replit AI',    company:'Replit',        domain:'replit.com',          score:19, rank:27, trend:14,  color:'#f59e0b', cat:'Coding',       launched:'Mar 2023', desc:'AI-powered cloud IDE that builds and runs apps in the browser.' },
+  { name:'Ideogram',     company:'Ideogram',      domain:'ideogram.ai',         score:17, rank:28, trend:33,  color:'#84cc16', cat:'Image',        launched:'Aug 2023', desc:'AI image generator that excels at text rendering inside images.' },
+  { name:'Leonardo AI',  company:'Leonardo',      domain:'leonardo.ai',         score:15, rank:29, trend:20,  color:'#eab308', cat:'Image',        launched:'Nov 2022', desc:'AI image platform built for game assets, concept art and design.' },
+  { name:'Luma AI',      company:'Luma Labs',     domain:'lumalabs.ai',         score:13, rank:30, trend:38,  color:'#06b6d4', cat:'Video',        launched:'May 2024', desc:'Dream Machine — high-quality video generation from text or images.' },
+  { name:'Synthesia',    company:'Synthesia',     domain:'synthesia.io',        score:12, rank:31, trend:11,  color:'#3b82f6', cat:'Video',        launched:'Jun 2021', desc:'Create AI avatar videos in 130+ languages for training and comms.' },
+  { name:'Descript',     company:'Descript',      domain:'descript.com',        score:11, rank:32, trend:6,   color:'#ec4899', cat:'Voice',        launched:'Jan 2019', desc:'Edit audio/video by editing text. AI-powered podcast and video tool.' },
+  { name:'Hugging Face', company:'Hugging Face',  domain:'huggingface.co',      score:32, rank:33, trend:5,   color:'#fbbf24', cat:'Open Source',  launched:'2016',     desc:'The GitHub of AI — hosts 500k+ models and datasets openly.' },
+  { name:'Groq',         company:'Groq',          domain:'groq.com',            score:23, rank:34, trend:44,  color:'#f43f5e', cat:'Infrastructure',launched:'Feb 2024', desc:'Ultra-fast AI inference chip — runs LLMs 10x faster than GPUs.' },
+  { name:'Udio',         company:'Udio',          domain:'udio.com',            score:18, rank:35, trend:30,  color:'#a855f7', cat:'Music',        launched:'Apr 2024', desc:'AI music generator rivalling Suno with studio-quality output.' },
+  { name:'Pi',           company:'Inflection AI', domain:'pi.ai',               score:14, rank:36, trend:-10, color:'#64748b', cat:'Chatbot',      launched:'May 2023', desc:'Personal AI companion focused on emotional intelligence and conversation.' },
+  { name:'Canva AI',     company:'Canva',         domain:'canva.com',           score:40, rank:37, trend:22,  color:'#00c4cc', cat:'Design',       launched:'Mar 2023', desc:'AI design tools built into Canva — used by 150M+ creators worldwide.' },
+  { name:'Grammarly AI', company:'Grammarly',     domain:'grammarly.com',       score:35, rank:38, trend:4,   color:'#15c39a', cat:'Productivity', launched:'2009',     desc:'AI writing assistant that rewrites, refines and improves your text.' },
+  { name:'Jasper',       company:'Jasper AI',     domain:'jasper.ai',           score:13, rank:39, trend:-15, color:'#7c3aed', cat:'Productivity', launched:'Feb 2021', desc:'AI content platform for marketing teams and brand copy.' },
+  { name:'Cohere',       company:'Cohere',        domain:'cohere.com',          score:16, rank:40, trend:12,  color:'#0ea5e9', cat:'Enterprise',   launched:'2019',     desc:'Enterprise-grade LLMs for search, summarisation and classification.' },
+  { name:'Sora',         company:'OpenAI',        domain:'openai.com',          score:33, rank:41, trend:60,  color:'#00d4ff', cat:'Video',        launched:'Feb 2024', desc:'OpenAI\'s text-to-video model that generates cinematic, photorealistic clips.' },
+  { name:'NotebookLM',   company:'Google',        domain:'notebooklm.google',   score:26, rank:42, trend:70,  color:'#4285f4', cat:'Productivity', launched:'Jul 2023', desc:'Upload your docs, ask questions. Google\'s AI-powered research notebook.' },
+  { name:'Llama',        company:'Meta',          domain:'meta.com',            score:31, rank:43, trend:18,  color:'#0064e0', cat:'Open Source',  launched:'Feb 2023', desc:'Meta\'s open-source LLM family powering thousands of AI applications.' },
+  { name:'Poe',          company:'Quora',         domain:'poe.com',             score:24, rank:44, trend:8,   color:'#8b5cf6', cat:'Chatbot',      launched:'Dec 2022', desc:'Chat with Claude, GPT-4, Llama and more in one place.' },
+  { name:'Microsoft Designer', company:'Microsoft', domain:'designer.microsoft.com', score:20, rank:45, trend:15, color:'#00a4ef', cat:'Design',   launched:'Oct 2022', desc:'AI-powered graphic design tool built into Microsoft 365.' },
+  { name:'Phind',        company:'Phind',         domain:'phind.com',           score:14, rank:46, trend:22,  color:'#6366f1', cat:'Search',       launched:'Apr 2023', desc:'AI search engine built for developers — code-aware, context-rich answers.' },
+  { name:'You.com',      company:'You.com',       domain:'you.com',             score:17, rank:47, trend:10,  color:'#3b82f6', cat:'Search',       launched:'Nov 2021', desc:'AI search engine that cites sources and lets you customise your results.' },
+  { name:'Hailuo',       company:'MiniMax',       domain:'hailuoai.video',      score:15, rank:48, trend:45,  color:'#a855f7', cat:'Video',        launched:'Aug 2024', desc:'High-quality AI video generator known for fluid motion and realism.' },
+  { name:'Kimi',         company:'Moonshot AI',   domain:'kimi.moonshot.cn',    score:18, rank:49, trend:38,  color:'#06b6d4', cat:'Chatbot',      launched:'Nov 2023', desc:'Chinese long-context AI assistant with 1M token context window.' },
+  { name:'Imagen',       company:'Google',        domain:'deepmind.google',     score:19, rank:50, trend:20,  color:'#34d399', cat:'Image',        launched:'May 2022', desc:'Google DeepMind\'s photorealistic text-to-image generation model.' },
+  { name:'Veo',          company:'Google',        domain:'deepmind.google',     score:16, rank:51, trend:35,  color:'#4285f4', cat:'Video',        launched:'May 2024', desc:'Google DeepMind\'s high-definition AI video generation model.' },
+  { name:'Flux',         company:'Black Forest',  domain:'blackforestlabs.ai',  score:21, rank:52, trend:50,  color:'#1e293b', cat:'Image',        launched:'Aug 2024', desc:'State-of-the-art open-source image model rivalling Midjourney quality.' },
+  { name:'Qwen',         company:'Alibaba',       domain:'qwenlm.github.io',    score:17, rank:53, trend:28,  color:'#f59e0b', cat:'Chatbot',      launched:'Sep 2023', desc:'Alibaba\'s open-source LLM series with strong multilingual capabilities.' },
+  { name:'Replicate',    company:'Replicate',     domain:'replicate.com',       score:13, rank:54, trend:14,  color:'#6366f1', cat:'Infrastructure',launched:'2019',     desc:'Run open-source AI models via API — images, video, audio and more.' },
+  { name:'Together AI',  company:'Together AI',   domain:'together.ai',         score:12, rank:55, trend:18,  color:'#10b981', cat:'Infrastructure',launched:'Jun 2022', desc:'Fast inference API for open-source models at low cost.' },
+  { name:'Elicit',       company:'Elicit',        domain:'elicit.com',          score:10, rank:56, trend:6,   color:'#8b5cf6', cat:'Research',     launched:'2021',     desc:'AI research assistant that finds, summarises and analyses academic papers.' },
+  { name:'Coze',         company:'ByteDance',     domain:'coze.com',            score:14, rank:57, trend:32,  color:'#f43f5e', cat:'Productivity', launched:'Nov 2023', desc:'ByteDance\'s no-code AI bot builder with plugins and knowledge bases.' },
+  { name:'Krea AI',      company:'Krea',          domain:'krea.ai',             score:11, rank:58, trend:24,  color:'#e879f9', cat:'Image',        launched:'2023',     desc:'Real-time AI image generation and enhancement for creatives.' },
+  { name:'Typeface',     company:'Typeface',      domain:'typeface.ai',         score:9,  rank:59, trend:5,   color:'#64748b', cat:'Productivity', launched:'Feb 2023', desc:'Enterprise AI content platform for on-brand marketing at scale.' },
+  { name:'Fal.ai',       company:'Fal',           domain:'fal.ai',              score:11, rank:60, trend:28,  color:'#a78bfa', cat:'Infrastructure',launched:'2023',     desc:'Blazing-fast AI media generation API — images and video in milliseconds.' },
+  { name:'Figma AI',     company:'Figma',         domain:'figma.com',           score:20, rank:61, trend:30,  color:'#f24e1e', cat:'Design',       launched:'Jun 2023', desc:'AI design features built into Figma — auto-layout, copy and prototyping.' },
+  { name:'Framer AI',    company:'Framer',        domain:'framer.com',          score:16, rank:62, trend:24,  color:'#0099ff', cat:'Design',       launched:'May 2023', desc:'Describe a website, get a fully designed and deployed site instantly.' },
+  { name:'Devin',        company:'Cognition',     domain:'cognition.ai',        score:18, rank:63, trend:55,  color:'#7c3aed', cat:'Coding',       launched:'Mar 2024', desc:'World\'s first AI software engineer — plans, codes and deploys autonomously.' },
+  { name:'Ollama',       company:'Ollama',        domain:'ollama.ai',           score:19, rank:64, trend:35,  color:'#1e293b', cat:'Open Source',  launched:'Jul 2023', desc:'Run LLMs locally on your Mac or Linux machine with one command.' },
+  { name:'CapCut AI',    company:'ByteDance',     domain:'capcut.com',          score:22, rank:65, trend:20,  color:'#000000', cat:'Video',        launched:'2020',     desc:'AI-powered video editor used by 500M+ creators for short-form content.' },
+  { name:'Murf AI',      company:'Murf',          domain:'murf.ai',             score:14, rank:66, trend:12,  color:'#8b5cf6', cat:'Voice',        launched:'2020',     desc:'Studio-quality AI voiceovers in 120+ voices for videos and podcasts.' },
+  { name:'Otter.ai',     company:'Otter AI',      domain:'otter.ai',            score:16, rank:67, trend:8,   color:'#1e40af', cat:'Productivity', launched:'2016',     desc:'AI meeting transcription and notes — joins Zoom, Meet and Teams calls.' },
+  { name:'Fireflies',    company:'Fireflies.ai',  domain:'fireflies.ai',        score:13, rank:68, trend:15,  color:'#7c3aed', cat:'Productivity', launched:'2016',     desc:'AI notetaker that records, transcribes and summarises every meeting.' },
+  { name:'Tome',         company:'Tome',          domain:'tome.app',            score:15, rank:69, trend:10,  color:'#6d28d9', cat:'Productivity', launched:'Nov 2022', desc:'AI presentation maker that generates slides from a single prompt.' },
+  { name:'Zapier AI',    company:'Zapier',        domain:'zapier.com',          score:17, rank:70, trend:18,  color:'#ff4a00', cat:'Productivity', launched:'2023',     desc:'AI that automates workflows across 6,000+ apps with natural language.' },
+  { name:'Tabnine',      company:'Tabnine',       domain:'tabnine.com',         score:12, rank:71, trend:5,   color:'#4f46e5', cat:'Coding',       launched:'2019',     desc:'AI code completion that learns your codebase and team patterns.' },
+  { name:'Copy.ai',      company:'Copy.ai',       domain:'copy.ai',             score:12, rank:72, trend:-5,  color:'#7c3aed', cat:'Productivity', launched:'Oct 2020', desc:'AI copywriting tool for marketing teams — emails, ads and social posts.' },
+  { name:'Speechify',    company:'Speechify',     domain:'speechify.com',       score:15, rank:73, trend:12,  color:'#1d4ed8', cat:'Voice',        launched:'2017',     desc:'Text-to-speech app that reads any content aloud at up to 4.5x speed.' },
+  { name:'NovelAI',      company:'Anlatan',       domain:'novelai.net',         score:13, rank:74, trend:5,   color:'#6366f1', cat:'Chatbot',      launched:'Jun 2021', desc:'AI storytelling and image generation platform for creative writers.' },
+  { name:'Playground',   company:'Playground AI', domain:'playground.ai',       score:11, rank:75, trend:8,   color:'#8b5cf6', cat:'Image',        launched:'2022',     desc:'Free AI image generator with a powerful canvas editing interface.' },
+  { name:'NightCafe',    company:'NightCafe',     domain:'nightcafe.studio',    score:10, rank:76, trend:3,   color:'#1e293b', cat:'Image',        launched:'Nov 2021', desc:'AI art generator with the largest online community of AI artists.' },
+  { name:'Topaz AI',     company:'Topaz Labs',    domain:'topazlabs.com',       score:12, rank:77, trend:9,   color:'#0ea5e9', cat:'Image',        launched:'2020',     desc:'AI photo and video upscaling, denoising and sharpening tools.' },
+  { name:'D-ID',         company:'D-ID',          domain:'d-id.com',            score:11, rank:78, trend:14,  color:'#7c3aed', cat:'Video',        launched:'2017',     desc:'Create talking AI avatars from a photo — used in training and marketing.' },
+  { name:'Captions',     company:'Captions AI',   domain:'captions.ai',         score:12, rank:79, trend:20,  color:'#ec4899', cat:'Video',        launched:'2021',     desc:'AI video editor that auto-captions, translates and edits talking videos.' },
+  { name:'Photoroom',    company:'Photoroom',     domain:'photoroom.com',       score:13, rank:80, trend:16,  color:'#6366f1', cat:'Image',        launched:'2020',     desc:'AI background remover and product photo editor used by e-commerce sellers.' },
+  { name:'Duolingo AI',  company:'Duolingo',      domain:'duolingo.com',        score:15, rank:81, trend:10,  color:'#58cc02', cat:'Education',    launched:'2023',     desc:'AI-powered language learning with personalised lessons and speaking practice.' },
+  { name:'Khanmigo',     company:'Khan Academy',  domain:'khanacademy.org',     score:12, rank:82, trend:8,   color:'#14b8a6', cat:'Education',    launched:'Mar 2023', desc:'AI tutor by Khan Academy that teaches rather than just answers questions.' },
+  { name:'LM Studio',    company:'LM Studio',     domain:'lmstudio.ai',         score:14, rank:83, trend:22,  color:'#7c3aed', cat:'Open Source',  launched:'2023',     desc:'Desktop app to discover, download and run local LLMs with a chat UI.' },
+  { name:'OpenRouter',   company:'OpenRouter',    domain:'openrouter.ai',       score:10, rank:84, trend:18,  color:'#6366f1', cat:'Infrastructure',launched:'2023',     desc:'Single API to access 200+ LLMs from OpenAI, Anthropic, Meta and more.' },
+  { name:'Writesonic',   company:'Writesonic',    domain:'writesonic.com',      score:11, rank:85, trend:-8,  color:'#8b5cf6', cat:'Productivity', launched:'2021',     desc:'AI writing platform for SEO content, ads and product descriptions.' },
+  { name:'Aiva',         company:'Aiva',          domain:'aiva.ai',             score:10, rank:86, trend:5,   color:'#7c3aed', cat:'Music',        launched:'Feb 2016', desc:'AI music composition tool used in films, games and commercials.' },
+  { name:'Boomy',        company:'Boomy',         domain:'boomy.com',           score:9,  rank:87, trend:8,   color:'#ec4899', cat:'Music',        launched:'2021',     desc:'Create original songs in seconds and release them to streaming platforms.' },
+  { name:'Artbreeder',   company:'Artbreeder',    domain:'artbreeder.com',      score:9,  rank:88, trend:2,   color:'#34d399', cat:'Image',        launched:'2018',     desc:'Blend and evolve AI images collaboratively — portraits, landscapes and more.' },
+  { name:'Remove.bg',    company:'Kaleido',       domain:'remove.bg',           score:13, rank:89, trend:4,   color:'#6366f1', cat:'Image',        launched:'2018',     desc:'Instantly remove image backgrounds with AI — used by 30M+ people.' },
+  { name:'Amazon Q',     company:'Amazon',        domain:'aws.amazon.com',      score:14, rank:90, trend:15,  color:'#ff9900', cat:'Enterprise',   launched:'Nov 2023', desc:'Amazon\'s enterprise AI assistant for coding, Q&A and business tasks.' },
+  { name:'Webflow AI',   company:'Webflow',       domain:'webflow.com',         score:13, rank:91, trend:12,  color:'#4353ff', cat:'Design',       launched:'2023',     desc:'AI-powered web design inside Webflow — build and publish without code.' },
+  { name:'Picsart AI',   company:'Picsart',       domain:'picsart.com',         score:14, rank:92, trend:8,   color:'#ff2442', cat:'Image',        launched:'2023',     desc:'AI photo and video editing tools for creators — background, effects and more.' },
+  { name:'Beautiful.ai', company:'Beautiful.ai',  domain:'beautiful.ai',        score:10, rank:93, trend:5,   color:'#6366f1', cat:'Productivity', launched:'2017',     desc:'AI presentation maker that keeps your slides perfectly designed.' },
+  { name:'Lovo AI',      company:'Lovo',          domain:'lovo.ai',             score:10, rank:94, trend:9,   color:'#8b5cf6', cat:'Voice',        launched:'2019',     desc:'AI voice generator with 500+ voices for videos, podcasts and e-learning.' },
+  { name:'Fotor AI',     company:'Fotor',         domain:'fotor.com',           score:10, rank:95, trend:6,   color:'#0ea5e9', cat:'Image',        launched:'2023',     desc:'Online AI photo editor with background removal, retouching and art generation.' },
+  { name:'Sudowrite',    company:'Sudowrite',     domain:'sudowrite.com',       score:9,  rank:96, trend:4,   color:'#7c3aed', cat:'Productivity', launched:'2020',     desc:'AI writing tool built specifically for novelists and fiction writers.' },
+  { name:'Scale AI',     company:'Scale AI',      domain:'scale.com',           score:15, rank:97, trend:10,  color:'#f43f5e', cat:'Enterprise',   launched:'2016',     desc:'Data labelling and AI evaluation platform used to train frontier models.' },
+  { name:'Weights & B',  company:'Weights & Biases', domain:'wandb.ai',        score:12, rank:98, trend:8,   color:'#fbbf24', cat:'Enterprise',   launched:'2018',     desc:'ML experiment tracking, model monitoring and collaboration platform.' },
+  { name:'Hugging Chat', company:'Hugging Face',  domain:'huggingface.co',      score:11, rank:99, trend:10,  color:'#fbbf24', cat:'Chatbot',      launched:'Apr 2023', desc:'Free, open-source chat interface running the best open-source LLMs.' },
+  { name:'Langchain',    company:'LangChain',     domain:'langchain.com',       score:14, rank:100,trend:6,   color:'#1c4532', cat:'Infrastructure',launched:'Oct 2022', desc:'Framework for building LLM-powered apps with memory, tools and agents.' },
+];
+
+// ── Canvas background ────────────────────────────────────────────
+const bg  = document.getElementById('bg');
+const ctx = bg.getContext('2d');
+let W, H;
+
+function setSize() {
+  W = bg.width  = window.innerWidth;
+  H = bg.height = window.innerHeight;
+}
+
+function drawBg() {
+  ctx.clearRect(0,0,W,H);
+
+  // Base gradient
+  const grad = ctx.createRadialGradient(W*0.5, H*0.5, 0, W*0.5, H*0.5, W*0.65);
+  grad.addColorStop(0,   '#051828');
+  grad.addColorStop(0.5, '#030f1e');
+  grad.addColorStop(1,   '#010810');
+  ctx.fillStyle = grad;
+  ctx.fillRect(0,0,W,H);
+
+  // Grid
+  ctx.lineWidth = 0.5;
+  const step = 48;
+  for (let x = 0; x < W; x += step) {
+    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H);
+    ctx.strokeStyle = x % (step*4) === 0 ? 'rgba(0,180,255,0.06)' : 'rgba(0,180,255,0.025)';
+    ctx.stroke();
+  }
+  for (let y = 0; y < H; y += step) {
+    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y);
+    ctx.strokeStyle = y % (step*4) === 0 ? 'rgba(0,180,255,0.06)' : 'rgba(0,180,255,0.025)';
+    ctx.stroke();
+  }
+
+  // Radial sweep lines from center
+  ctx.save();
+  ctx.translate(W/2, H/2);
+  for (let a = 0; a < 360; a += 30) {
+    ctx.beginPath();
+    ctx.moveTo(0, 0);
+    const rad = a * Math.PI / 180;
+    ctx.lineTo(Math.cos(rad)*W, Math.sin(rad)*W);
+    ctx.strokeStyle = 'rgba(0,180,255,0.02)';
+    ctx.lineWidth = 1;
+    ctx.stroke();
+  }
+  ctx.restore();
+
+  // Corner decorations (data readouts)
+  ctx.font = '8px monospace';
+  ctx.fillStyle = 'rgba(0,180,255,0.18)';
+  const lines = ['SYS: ACTIVE', 'NODES: 20', 'REFRESH: 6H', 'SRC: GTRENDS'];
+  lines.forEach((l,i) => { ctx.fillText(l, 14, 56 + i*14); });
+
+  const lines2 = ['LAT: 28.6°N', 'LNG: 77.2°E', 'v2.4.1'];
+  lines2.forEach((l,i) => { ctx.fillText(l, W-70, 56 + i*14); });
+}
+
+// ── Bubble layout ────────────────────────────────────────────────
+const scene = document.getElementById('scene');
+
+let maxR = Math.min(W, H) * 0.092;
+let minR = Math.min(W, H) * 0.012;
+const maxScore = 98;
+
+let bubbleData = []; // declared in outer scope so float loop can access it
+
+async function loadAndBuild() {
+  try {
+    const res  = await fetch(`${WORKER_URL}/trends`);
+    const data = await res.json();
+    if (Array.isArray(data.tools) && data.tools.length > 0) {
+      TOOLS = data.tools.map(t => ({
+        ...t,
+        cat: t.category || t.cat || 'Other',
+      }));
+      // Update subtitle date
+      const d = new Date(data.generatedAt);
+      document.getElementById('subtitle').textContent =
+        `— ${d.toLocaleDateString('en-US', { month: 'long', day: 'numeric', year: 'numeric' }).toUpperCase()} —`;
+    }
+  } catch (e) {
+    console.warn('[ai-trends] Could not load from worker, using fallback data:', e.message);
+  }
+  TOOLS.sort((a, b) => b.score - a.score);
+  TOOLS.forEach((t, i) => t.rank = i + 1);
+  build();
+  requestAnimationFrame(floatLoop);
+}
+
+function build() {
+  setSize();
+  maxR = Math.min(W, H) * 0.092;
+  minR = Math.min(W, H) * 0.012;
+  scene.innerHTML = '';
+  bubbleData = [];
+
+  // ── Greedy circle packing ───────────────────────────────────────
+// Place largest bubble at center, then greedily place each next bubble
+// as close to center as possible without overlapping any placed bubble.
+
+const cx0 = W / 2, cy0 = H / 2 + 20;
+
+bubbleData = TOOLS.map(t => ({
+  ...t,
+  r: minR + (t.score / maxScore) * (maxR - minR),
+  x: cx0, y: cy0,
+  floatOffset: Math.random() * Math.PI * 2,
+  floatSpeed:  0.25 + Math.random() * 0.2,
+  floatAmp:    3.5  + Math.random() * 4.0,
+}));
+
+// Place first bubble at center
+bubbleData[0].x = cx0;
+bubbleData[0].y = cy0;
+
+const placed = [bubbleData[0]];
+
+function overlaps(x, y, r, candidates) {
+  for (const p of candidates) {
+    const dx = x - p.x, dy = y - p.y;
+    if (dx*dx + dy*dy < (r + p.r + 2) * (r + p.r + 2)) return true;
+  }
+  return false;
+}
+
+for (let i = 1; i < bubbleData.length; i++) {
+  const b = bubbleData[i];
+  let bestX = cx0, bestY = cy0, bestDist = Infinity;
+
+  // Try positions tangent to every pair of placed circles (and tangent to single circles)
+  const candidates = [];
+
+  // Tangent to each placed circle
+  for (const p of placed) {
+    const tangentDist = p.r + b.r + 2;
+    for (let a = 0; a < Math.PI * 2; a += 0.15) {
+      candidates.push({
+        x: p.x + Math.cos(a) * tangentDist,
+        y: p.y + Math.sin(a) * tangentDist,
+      });
+    }
+  }
+
+  // Also try tangent to pairs
+  for (let pi = 0; pi < placed.length; pi++) {
+    for (let pj = pi + 1; pj < placed.length; pj++) {
+      const A = placed[pi], B = placed[pj];
+      const dx = B.x - A.x, dy = B.y - A.y;
+      const d = Math.sqrt(dx*dx + dy*dy);
+      const rA = A.r + b.r + 2, rB = B.r + b.r + 2;
+      if (d > rA + rB || d < Math.abs(rA - rB)) continue;
+      const a2 = (rA*rA - rB*rB + d*d) / (2*d);
+      const h2 = rA*rA - a2*a2;
+      if (h2 < 0) continue;
+      const h = Math.sqrt(h2);
+      const mx = A.x + a2*(dx/d), my = A.y + a2*(dy/d);
+      candidates.push({ x: mx + h*(dy/d),  y: my - h*(dx/d) });
+      candidates.push({ x: mx - h*(dy/d),  y: my + h*(dx/d) });
+    }
+  }
+
+  for (const c of candidates) {
+    if (overlaps(c.x, c.y, b.r, placed)) continue;
+    const dist = (c.x - cx0)**2 + (c.y - cy0)**2;
+    if (dist < bestDist) { bestDist = dist; bestX = c.x; bestY = c.y; }
+  }
+
+  b.x = bestX; b.y = bestY;
+  placed.push(b);
+}
+
+// Re-center entire cluster
+const ccx = bubbleData.reduce((s,b) => s + b.x, 0) / bubbleData.length;
+const ccy = bubbleData.reduce((s,b) => s + b.y, 0) / bubbleData.length;
+bubbleData.forEach(b => { b.x += cx0 - ccx; b.y += cy0 - ccy; });
+
+  // ── Draw bg + lines ───────────────────────────────────────────
+  drawBg();
+  createBubbleDom();
+  drawLines();
+} // end build()
+
+// ── Draw connection lines on canvas ─────────────────────────────
+function drawLines() {
+  const drawn = new Set();
+  for (let i = 0; i < bubbleData.length; i++) {
+    // Find 2 nearest neighbours
+    const sorted = bubbleData
+      .map((b, j) => {
+        if (j === i) return null;
+        const dx = b.x - bubbleData[i].x, dy = b.y - bubbleData[i].y;
+        return { j, d: Math.sqrt(dx*dx + dy*dy) };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 2);
+
+    sorted.forEach(({ j, d }) => {
+      const key = [Math.min(i,j), Math.max(i,j)].join('-');
+      if (drawn.has(key) || d > 320) return;
+      drawn.add(key);
+      const a = bubbleData[i], b = bubbleData[j];
+      const alpha = Math.max(0, 1 - d / 320) * 0.35;
+      const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
+      grad.addColorStop(0, `rgba(${hexToRgb(a.color)}, ${alpha})`);
+      grad.addColorStop(1, `rgba(${hexToRgb(b.color)}, ${alpha})`);
+      ctx.beginPath();
+      ctx.moveTo(a.x, a.y);
+      ctx.lineTo(b.x, b.y);
+      ctx.strokeStyle = grad;
+      ctx.lineWidth = 0.8;
+      ctx.stroke();
+    });
+  }
+}
+
+// ── Create DOM bubbles ───────────────────────────────────────────
+function hexToRgb(hex) {
+  const h = hex.replace('#','');
+  const r = parseInt(h.slice(0,2),16), g = parseInt(h.slice(2,4),16), b = parseInt(h.slice(4,6),16);
+  return `${r},${g},${b}`;
+}
+
+function createBubbleDom() {
+bubbleData.forEach((t, i) => {
+  const d = t.r * 2;
+  const el = document.createElement('div');
+  el.className = 'bubble';
+  el.style.cssText = `
+    left:${t.x}px; top:${t.y}px;
+    width:${d}px; height:${d}px;
+    box-shadow: 0 0 ${t.r*0.6}px rgba(${hexToRgb(t.color)},0.5),
+                0 0 ${t.r*1.4}px rgba(${hexToRgb(t.color)},0.15),
+                inset 0 0 ${t.r*0.4}px rgba(${hexToRgb(t.color)},0.1);
+    border: 1.5px solid rgba(${hexToRgb(t.color)}, 0.7);
+    background: radial-gradient(circle at 40% 35%,
+      rgba(${hexToRgb(t.color)},0.22),
+      rgba(${hexToRgb(t.color)},0.08) 50%,
+      rgba(0,0,0,0.55));
+  `;
+
+  const inner = document.createElement('div');
+  inner.className = 'bubble-inner';
+
+  // Logo image
+  const img = document.createElement('img');
+  img.src = `https://www.google.com/s2/favicons?domain=${t.domain}&sz=64`;
+  img.alt = t.name;
+  img.width  = Math.round(d * 0.52);
+  img.height = Math.round(d * 0.52);
+  img.onerror = () => {
+    img.style.display = 'none';
+    const fb = document.createElement('div');
+    fb.style.cssText = `font-size:${Math.round(d*0.36)}px; color:rgba(${hexToRgb(t.color)},0.9);`;
+    fb.textContent = t.name[0];
+    inner.appendChild(fb);
+  };
+
+  inner.appendChild(img);
+  el.appendChild(inner);
+
+  // Mouse events
+  el.addEventListener('click', () => window.open(`https://${t.domain}`, '_blank'));
+  el.addEventListener('mouseenter', e => showTT(e.clientX, e.clientY, t));
+  el.addEventListener('mousemove',  e => moveTT(e.clientX, e.clientY));
+  el.addEventListener('mouseleave', () => tt.classList.remove('show'));
+
+  // Touch events
+  el.addEventListener('touchstart', e => {
+    e.preventDefault();
+    const touch = e.touches[0];
+    showTT(touch.clientX, touch.clientY, t);
+  }, { passive: false });
+  el.addEventListener('touchend', () => {
+    setTimeout(() => tt.classList.remove('show'), 2000);
+  });
+
+  scene.appendChild(el);
+  bubbleData[i].el = el;
+  el.style.left = t.x + 'px';
+  el.style.top  = t.y + 'px';
+});
+} // end createBubbleDom
+
+// ── Smooth float animation (transform only — no layout reflow) ────
+let t0 = null;
+function floatLoop(ts) {
+  if (!t0) t0 = ts;
+  const elapsed = (ts - t0) / 1000;
+  bubbleData.forEach(b => {
+    if (!b.el) return;
+    const dx = Math.cos(elapsed * b.floatSpeed * 0.7 + b.floatOffset) * b.floatAmp;
+    const dy = Math.sin(elapsed * b.floatSpeed       + b.floatOffset) * b.floatAmp;
+    b.el.style.transform = `translate(calc(-50% + ${dx.toFixed(2)}px), calc(-50% + ${dy.toFixed(2)}px))`;
+  });
+  requestAnimationFrame(floatLoop);
+}
+
+// ── Boot — fetch from worker then build ──────────────────────────
+loadAndBuild();
+
+// ── Tooltip ──────────────────────────────────────────────────────
+const tt = document.getElementById('tt');
+
+function showTT(cx, cy, t) {
+  document.getElementById('tt-img').src = `https://www.google.com/s2/favicons?domain=${t.domain}&sz=64`;
+  document.getElementById('tt-name').textContent    = t.name;
+  document.getElementById('tt-company').textContent = `${t.company} · ${t.cat}`;
+  document.getElementById('tt-fill').style.cssText  = `width:${t.score}%; background: linear-gradient(90deg, ${t.color}, ${t.color}88);`;
+  document.getElementById('tt-num').style.color     = t.color;
+  document.getElementById('tt-num').textContent     = `${t.score}/100`;
+  document.getElementById('tt-desc').textContent    = t.desc;
+
+  const tv = t.trend;
+  const trendStr = tv > 0 ? `<span style="color:#4ade80">↑ ${tv}% this week</span>`
+                 : tv < 0 ? `<span style="color:#f87171">↓ ${Math.abs(tv)}% this week</span>`
+                 : `<span style="color:#64748b">→ Stable</span>`;
+  document.getElementById('tt-pills').innerHTML = `
+    <span class="tt-pill"><b>Rank</b> #${t.rank}</span>
+    <span class="tt-pill"><b>Launched</b> ${t.launched}</span>
+    <span class="tt-pill"><b>Trend</b> ${trendStr}</span>
+    <span class="tt-pill"><b>Category</b> ${t.cat}</span>
+  `;
+  tt.style.borderColor = `rgba(${hexToRgb(t.color)}, 0.35)`;
+  tt.style.boxShadow   = `0 20px 60px rgba(0,0,0,0.8), 0 0 30px rgba(${hexToRgb(t.color)},0.1)`;
+  moveTT(cx, cy);
+  tt.classList.add('show');
+}
+
+function moveTT(cx, cy) {
+  const ttW = 260, ttH = 220;
+  const mobile = window.innerWidth < 600;
+  let x, y;
+  if (mobile) {
+    // center tooltip horizontally, show above touch point
+    x = Math.max(8, Math.min(window.innerWidth - ttW - 8, cx - ttW / 2));
+    y = cy - ttH - 16;
+    if (y < 8) y = cy + 20;
+  } else {
+    x = cx + 20;
+    y = cy - 70;
+    if (x + ttW > window.innerWidth)  x = cx - ttW - 8;
+    if (y + ttH > window.innerHeight) y = cy - ttH;
+    if (y < 0) y = 8;
+  }
+  tt.style.left = x + 'px';
+  tt.style.top  = y + 'px';
+}
+
+function hexToRgb(hex) {
+  const h = hex.replace('#','');
+  return `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`;
+}
+
+// Debounced resize — rebuilds entire layout for new viewport
+let resizeTimer;
+window.addEventListener('resize', () => {
+  clearTimeout(resizeTimer);
+  resizeTimer = setTimeout(() => { t0 = null; build(); }, 250);
+});
+</script>
+</body>
+</html>

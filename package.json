@@ -1,0 +1,7 @@
+{
+  "scripts": {
+    "deploy": "cd worker && npx wrangler deploy",
+    "refresh": "source .env && curl -s -X POST https://ai-trends-worker.YOURSUBDOMAIN.workers.dev/refresh -H \"x-refresh-token: $REFRESH_TOKEN\" | jq .",
+    "deploy:refresh": "npm run deploy && npm run refresh"
+  }
+}
