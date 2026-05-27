@@ -62,6 +62,23 @@
   }
   .bubble:hover { transform: translate(-50%, -50%) scale(1.15) !important; z-index: 50; }
 
+  /* Neural pulse ring */
+  .bubble::after {
+    content: '';
+    position: absolute;
+    inset: -3px;
+    border-radius: 50%;
+    border: 1.5px solid var(--bubble-color, rgba(100,200,255,0.4));
+    animation: neuron-pulse 3s ease-out infinite;
+    animation-delay: var(--pulse-delay, 0s);
+    pointer-events: none;
+  }
+  @keyframes neuron-pulse {
+    0%   { transform: scale(1);    opacity: 0.6; }
+    60%  { transform: scale(1.35); opacity: 0;   }
+    100% { transform: scale(1.35); opacity: 0;   }
+  }
+
   .bubble-inner {
     width: 100%; height: 100%;
     border-radius: 50%;
@@ -165,6 +182,7 @@
 <body>
 
 <canvas id="bg"></canvas>
+<canvas id="lines"></canvas>
 
 <div id="title-block">
   <h1>Global AI Popularity Pulse</h1>
@@ -191,7 +209,7 @@
 
 <script>
 // ── Worker URL ────────────────────────────────────────────────────
-const WORKER_URL = 'https://ai-trends-worker.YOURSUBDOMAIN.workers.dev';
+const WORKER_URL = 'https://ai-trends-worker.ud0103.workers.dev';
 
 // ── Data (populated from KV via worker) ───────────────────────────
 let TOOLS = [
@@ -297,63 +315,114 @@ let TOOLS = [
   { name:'Langchain',    company:'LangChain',     domain:'langchain.com',       score:14, rank:100,trend:6,   color:'#1c4532', cat:'Infrastructure',launched:'Oct 2022', desc:'Framework for building LLM-powered apps with memory, tools and agents.' },
 ];
 
-// ── Canvas background ────────────────────────────────────────────
-const bg  = document.getElementById('bg');
-const ctx = bg.getContext('2d');
+// ── Canvas setup ─────────────────────────────────────────────────
+const bg   = document.getElementById('bg');
+const ctx  = bg.getContext('2d');
+const lc   = document.getElementById('lines');
+const lctx = lc.getContext('2d');
 let W, H;
 
 function setSize() {
-  W = bg.width  = window.innerWidth;
-  H = bg.height = window.innerHeight;
+  W = bg.width  = lc.width  = window.innerWidth;
+  H = bg.height = lc.height = window.innerHeight;
 }
 
 function drawBg() {
   ctx.clearRect(0,0,W,H);
-
-  // Base gradient
-  const grad = ctx.createRadialGradient(W*0.5, H*0.5, 0, W*0.5, H*0.5, W*0.65);
-  grad.addColorStop(0,   '#051828');
-  grad.addColorStop(0.5, '#030f1e');
-  grad.addColorStop(1,   '#010810');
+  // Deep neural dark background
+  const grad = ctx.createRadialGradient(W*0.5, H*0.5, 0, W*0.5, H*0.5, W*0.7);
+  grad.addColorStop(0,   '#060d1f');
+  grad.addColorStop(0.6, '#030912');
+  grad.addColorStop(1,   '#010508');
   ctx.fillStyle = grad;
   ctx.fillRect(0,0,W,H);
+}
 
-  // Grid
-  ctx.lineWidth = 0.5;
-  const step = 48;
-  for (let x = 0; x < W; x += step) {
-    ctx.beginPath(); ctx.moveTo(x, 0); ctx.lineTo(x, H);
-    ctx.strokeStyle = x % (step*4) === 0 ? 'rgba(0,180,255,0.06)' : 'rgba(0,180,255,0.025)';
-    ctx.stroke();
+// ── Neural connections (static, drawn once after build) ───────────
+let connections = []; // { ax,ay,bx,by,colorA,colorB,alpha }
+
+function buildConnections() {
+  connections = [];
+  const drawn = new Set();
+  for (let i = 0; i < bubbleData.length; i++) {
+    const sorted = bubbleData
+      .map((b, j) => {
+        if (j === i) return null;
+        const dx = b.x - bubbleData[i].x, dy = b.y - bubbleData[i].y;
+        return { j, d: Math.sqrt(dx*dx + dy*dy) };
+      })
+      .filter(Boolean)
+      .sort((a, b) => a.d - b.d)
+      .slice(0, 4); // 4 neighbours for denser network look
+
+    sorted.forEach(({ j, d }) => {
+      const key = [Math.min(i,j), Math.max(i,j)].join('-');
+      if (drawn.has(key) || d > 280) return;
+      drawn.add(key);
+      const a = bubbleData[i], b = bubbleData[j];
+      connections.push({
+        ax: a.x, ay: a.y, bx: b.x, by: b.y,
+        colorA: a.color, colorB: b.color,
+        alpha: Math.max(0, 1 - d / 280) * 0.25,
+        len: d,
+      });
+    });
   }
-  for (let y = 0; y < H; y += step) {
-    ctx.beginPath(); ctx.moveTo(0, y); ctx.lineTo(W, y);
-    ctx.strokeStyle = y % (step*4) === 0 ? 'rgba(0,180,255,0.06)' : 'rgba(0,180,255,0.025)';
-    ctx.stroke();
+}
+
+function drawConnections() {
+  lctx.clearRect(0,0,W,H);
+  connections.forEach(c => {
+    const grad = lctx.createLinearGradient(c.ax, c.ay, c.bx, c.by);
+    grad.addColorStop(0, `rgba(${hexToRgb(c.colorA)}, ${c.alpha})`);
+    grad.addColorStop(1, `rgba(${hexToRgb(c.colorB)}, ${c.alpha})`);
+    lctx.beginPath();
+    lctx.moveTo(c.ax, c.ay);
+    lctx.lineTo(c.bx, c.by);
+    lctx.strokeStyle = grad;
+    lctx.lineWidth = 0.8;
+    lctx.stroke();
+  });
+}
+
+// ── Signal pulses traveling along connections ─────────────────────
+const pulses = [];
+
+function spawnPulse() {
+  if (connections.length === 0) return;
+  const c = connections[Math.floor(Math.random() * connections.length)];
+  pulses.push({ c, t: 0, speed: 0.004 + Math.random() * 0.006 });
+}
+
+// Spawn a new pulse every ~400ms
+setInterval(spawnPulse, 400);
+
+function drawPulses() {
+  pulses.forEach((p, i) => {
+    p.t += p.speed;
+    const x = p.c.ax + (p.c.bx - p.c.ax) * p.t;
+    const y = p.c.ay + (p.c.by - p.c.ay) * p.t;
+    const r = hexToRgb(p.c.colorA);
+    const alpha = Math.sin(p.t * Math.PI) * 0.9;
+
+    lctx.beginPath();
+    lctx.arc(x, y, 2.5, 0, Math.PI * 2);
+    lctx.fillStyle = `rgba(${r}, ${alpha})`;
+    lctx.fill();
+
+    // Glow
+    const grd = lctx.createRadialGradient(x,y,0, x,y,8);
+    grd.addColorStop(0, `rgba(${r}, ${alpha * 0.6})`);
+    grd.addColorStop(1, `rgba(${r}, 0)`);
+    lctx.beginPath();
+    lctx.arc(x, y, 8, 0, Math.PI * 2);
+    lctx.fillStyle = grd;
+    lctx.fill();
+  });
+  // Remove finished pulses
+  for (let i = pulses.length - 1; i >= 0; i--) {
+    if (pulses[i].t >= 1) pulses.splice(i, 1);
   }
-
-  // Radial sweep lines from center
-  ctx.save();
-  ctx.translate(W/2, H/2);
-  for (let a = 0; a < 360; a += 30) {
-    ctx.beginPath();
-    ctx.moveTo(0, 0);
-    const rad = a * Math.PI / 180;
-    ctx.lineTo(Math.cos(rad)*W, Math.sin(rad)*W);
-    ctx.strokeStyle = 'rgba(0,180,255,0.02)';
-    ctx.lineWidth = 1;
-    ctx.stroke();
-  }
-  ctx.restore();
-
-  // Corner decorations (data readouts)
-  ctx.font = '8px monospace';
-  ctx.fillStyle = 'rgba(0,180,255,0.18)';
-  const lines = ['SYS: ACTIVE', 'NODES: 20', 'REFRESH: 6H', 'SRC: GTRENDS'];
-  lines.forEach((l,i) => { ctx.fillText(l, 14, 56 + i*14); });
-
-  const lines2 = ['LAT: 28.6°N', 'LNG: 77.2°E', 'v2.4.1'];
-  lines2.forEach((l,i) => { ctx.fillText(l, W-70, 56 + i*14); });
 }
 
 // ── Bubble layout ────────────────────────────────────────────────
@@ -475,45 +544,12 @@ const ccx = bubbleData.reduce((s,b) => s + b.x, 0) / bubbleData.length;
 const ccy = bubbleData.reduce((s,b) => s + b.y, 0) / bubbleData.length;
 bubbleData.forEach(b => { b.x += cx0 - ccx; b.y += cy0 - ccy; });
 
-  // ── Draw bg + lines ───────────────────────────────────────────
+  // ── Draw bg + connections ──────────────────────────────────────
   drawBg();
   createBubbleDom();
-  drawLines();
+  buildConnections();
+  drawConnections();
 } // end build()
-
-// ── Draw connection lines on canvas ─────────────────────────────
-function drawLines() {
-  const drawn = new Set();
-  for (let i = 0; i < bubbleData.length; i++) {
-    // Find 2 nearest neighbours
-    const sorted = bubbleData
-      .map((b, j) => {
-        if (j === i) return null;
-        const dx = b.x - bubbleData[i].x, dy = b.y - bubbleData[i].y;
-        return { j, d: Math.sqrt(dx*dx + dy*dy) };
-      })
-      .filter(Boolean)
-      .sort((a, b) => a.d - b.d)
-      .slice(0, 2);
-
-    sorted.forEach(({ j, d }) => {
-      const key = [Math.min(i,j), Math.max(i,j)].join('-');
-      if (drawn.has(key) || d > 320) return;
-      drawn.add(key);
-      const a = bubbleData[i], b = bubbleData[j];
-      const alpha = Math.max(0, 1 - d / 320) * 0.35;
-      const grad = ctx.createLinearGradient(a.x, a.y, b.x, b.y);
-      grad.addColorStop(0, `rgba(${hexToRgb(a.color)}, ${alpha})`);
-      grad.addColorStop(1, `rgba(${hexToRgb(b.color)}, ${alpha})`);
-      ctx.beginPath();
-      ctx.moveTo(a.x, a.y);
-      ctx.lineTo(b.x, b.y);
-      ctx.strokeStyle = grad;
-      ctx.lineWidth = 0.8;
-      ctx.stroke();
-    });
-  }
-}
 
 // ── Create DOM bubbles ───────────────────────────────────────────
 function hexToRgb(hex) {
@@ -530,14 +566,16 @@ bubbleData.forEach((t, i) => {
   el.style.cssText = `
     left:${t.x}px; top:${t.y}px;
     width:${d}px; height:${d}px;
-    box-shadow: 0 0 ${t.r*0.6}px rgba(${hexToRgb(t.color)},0.5),
-                0 0 ${t.r*1.4}px rgba(${hexToRgb(t.color)},0.15),
+    --bubble-color: ${t.color};
+    --pulse-delay: ${(i * 0.17 % 3).toFixed(2)}s;
+    box-shadow: 0 0 ${t.r*0.7}px rgba(${hexToRgb(t.color)},0.55),
+                0 0 ${t.r*1.8}px rgba(${hexToRgb(t.color)},0.18),
                 inset 0 0 ${t.r*0.4}px rgba(${hexToRgb(t.color)},0.1);
-    border: 1.5px solid rgba(${hexToRgb(t.color)}, 0.7);
+    border: 1.5px solid rgba(${hexToRgb(t.color)}, 0.8);
     background: radial-gradient(circle at 40% 35%,
-      rgba(${hexToRgb(t.color)},0.22),
+      rgba(${hexToRgb(t.color)},0.25),
       rgba(${hexToRgb(t.color)},0.08) 50%,
-      rgba(0,0,0,0.55));
+      rgba(0,0,0,0.6));
   `;
 
   const inner = document.createElement('div');
@@ -583,17 +621,24 @@ bubbleData.forEach((t, i) => {
 });
 } // end createBubbleDom
 
-// ── Smooth float animation (transform only — no layout reflow) ────
+// ── Animation loop: float bubbles + draw signal pulses ────────────
 let t0 = null;
 function floatLoop(ts) {
   if (!t0) t0 = ts;
   const elapsed = (ts - t0) / 1000;
+
+  // Float bubbles
   bubbleData.forEach(b => {
     if (!b.el) return;
     const dx = Math.cos(elapsed * b.floatSpeed * 0.7 + b.floatOffset) * b.floatAmp;
     const dy = Math.sin(elapsed * b.floatSpeed       + b.floatOffset) * b.floatAmp;
     b.el.style.transform = `translate(calc(-50% + ${dx.toFixed(2)}px), calc(-50% + ${dy.toFixed(2)}px))`;
   });
+
+  // Redraw connections + pulses every frame
+  drawConnections();
+  drawPulses();
+
   requestAnimationFrame(floatLoop);
 }
 

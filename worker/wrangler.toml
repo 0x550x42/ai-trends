@@ -12,7 +12,7 @@ crons = ["0 0 * * *"]
 # Paste the returned id below
 [[kv_namespaces]]
 binding = "TRENDS_KV"
-id      = "PASTE_KV_ID_HERE"
+id      = "4909011be9e440a5835baa30b52ce19b"
 
 # ─── Secrets (never put real values here) ─────────────────────────
 # Set each with: npx wrangler secret put SECRET_NAME
