@@ -6,12 +6,12 @@
 export function buildPrompt(date) {
   return `Today is ${date}. You are an AI trends analyst with access to web search.
 
-Return a JSON object listing the top 50 most popular AI tools right now (no markdown, just raw JSON):
+Return a JSON object listing the top 100 most popular AI tools right now (no markdown, just raw JSON):
 
 {"tools":[{"id":"chatgpt","name":"ChatGPT","company":"OpenAI","domain":"chat.openai.com","score":98,"trend":5,"category":"Assistant","launched":"2022","desc":"Most widely used AI chatbot globally","color":"#10a37f"}]}
 
 Rules:
-- Exactly 50 tools, sorted by score descending
+- Exactly 100 tools, sorted by score descending
 - score: spread scores across the FULL range 1-98. #1 = 98, #50 should be around 5. Use a realistic power-law distribution — top 5 tools score 70-98, middle tools 20-60, bottom tools 5-20. Do NOT bunch scores close together.
 - trend: integer -30 to +30, week-over-week change
 - category: Assistant | Coding | Image | Video | Audio | Search | Platform | Model
