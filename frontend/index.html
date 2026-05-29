@@ -220,6 +220,50 @@
   }
   .tt-pill b { color:#94a3b8; font-weight:500; }
 
+  /* ── Mobile ──────────────────────────────────────────── */
+  @media (max-width: 600px) {
+    #title-block h1 {
+      font-size: 12px;
+      white-space: nowrap;
+    }
+    #title-block .date { font-size: 9px; }
+    #title-block .subtitle { display: none; }
+
+    /* Category filter: horizontal scroll row instead of vertical */
+    #cat-filter {
+      top: auto;
+      bottom: 70px;
+      left: 0; right: 0;
+      flex-direction: row;
+      overflow-x: auto;
+      padding: 0 10px;
+      gap: 6px;
+      -webkit-overflow-scrolling: touch;
+      scrollbar-width: none;
+    }
+    #cat-filter::-webkit-scrollbar { display: none; }
+    .cat-btn { flex-shrink: 0; font-size: 10px; padding: 5px 12px; }
+
+    /* Tool of the Day: smaller, bottom-anchored */
+    #totd {
+      top: auto;
+      bottom: 105px;
+      right: 10px;
+      width: 155px;
+      padding: 10px;
+    }
+    #totd-label { font-size: 7px; }
+    #totd-name  { font-size: 11px; }
+    #totd-desc  { display: none; }
+
+    /* Ticker */
+    #ticker-wrap { bottom: 32px; }
+
+    /* Footer */
+    #footer { font-size: 9px; bottom: 8px; }
+    #embed-btn { display: none; }
+  }
+
   /* ── Ticker ─────────────────────────────────────────── */
   #ticker-wrap {
     position: fixed;
@@ -687,7 +731,9 @@ function build() {
 // Place largest bubble at center, then greedily place each next bubble
 // as close to center as possible without overlapping any placed bubble.
 
-const HEADER_H = 80, FOOTER_H = 75; // extra for ticker
+const isMobile = window.innerWidth <= 600;
+const HEADER_H = isMobile ? 60 : 80;
+const FOOTER_H = isMobile ? 120 : 75; // more space for cat filter on mobile
 const cx0 = W / 2, cy0 = HEADER_H + (H - HEADER_H - FOOTER_H) / 2;
 
 // Elliptical distance — biases packing into an oval shape
