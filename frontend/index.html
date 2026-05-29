@@ -122,6 +122,15 @@
     overflow: hidden;
   }
 
+  .bubble img {
+    max-width: 52% !important;
+    max-height: 52% !important;
+    width: auto !important;
+    height: auto !important;
+    object-fit: contain;
+    display: block;
+  }
+
   .bubble-inner::before {
     content: '';
     position: absolute;
@@ -132,12 +141,6 @@
     pointer-events: none;
   }
 
-  .bubble img {
-    border-radius: 50%;
-    object-fit: contain;
-    position: relative;
-    z-index: 1;
-  }
 
   .trend-label {
     position: absolute;
@@ -619,8 +622,10 @@ bubbleData.forEach((t, i) => {
   const img = document.createElement('img');
   const iconSize = Math.round(Math.max(d * 0.52, 64));
   img.alt = t.name;
-  img.width  = iconSize;
-  img.height = iconSize;
+  // Icon size: max 52% of bubble diameter, but never larger than the bubble allows
+  const safeSize = Math.round(d * 0.48);
+  img.width  = safeSize;
+  img.height = safeSize;
   img.style.imageRendering = 'auto';
 
   // Try Google favicon at 256px first, fallback to 128, then fallback letter
