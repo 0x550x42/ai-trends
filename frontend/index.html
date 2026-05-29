@@ -413,8 +413,8 @@ function drawBg() {
 // ── Bubble layout ────────────────────────────────────────────────
 const scene = document.getElementById('scene');
 
-let maxR = Math.min(W, H) * 0.092;
-let minR = Math.min(W, H) * 0.012;
+let maxR = Math.min(W, H) * 0.072;
+let minR = Math.min(W, H) * 0.009;
 const maxScore = 98;
 
 let bubbleData = []; // declared in outer scope so float loop can access it
@@ -448,8 +448,8 @@ async function loadAndBuild() {
 
 function build() {
   setSize();
-  maxR = Math.min(W, H) * 0.092;
-  minR = Math.min(W, H) * 0.012;
+  maxR = Math.min(W, H) * 0.072;
+  minR = Math.min(W, H) * 0.009;
   scene.innerHTML = '';
   bubbleData = [];
 
@@ -459,6 +459,14 @@ function build() {
 
 const HEADER_H = 80, FOOTER_H = 40;
 const cx0 = W / 2, cy0 = HEADER_H + (H - HEADER_H - FOOTER_H) / 2;
+
+// Hexagonal distance — biases packing into a flat-top hexagon shape
+function hexDist(dx, dy) {
+  const scaleY = 1.1; // slightly taller hex to account for header offset
+  const x = Math.abs(dx);
+  const y = Math.abs(dy * scaleY);
+  return Math.max(y, x * 0.866 + y * 0.5);
+}
 
 bubbleData = TOOLS.map(t => ({
   ...t,
@@ -525,7 +533,8 @@ for (let i = 1; i < bubbleData.length; i++) {
     if (c.y - b.r < HEADER_H || c.y + b.r > H - FOOTER_H) continue;
     // Keep bubble within horizontal bounds
     if (c.x - b.r < 0 || c.x + b.r > W) continue;
-    const dist = (c.x - cx0)**2 + (c.y - cy0)**2;
+    // Use hexagonal distance to bias cluster into hex shape
+    const dist = hexDist(c.x - cx0, c.y - cy0);
     if (dist < bestDist) { bestDist = dist; bestX = c.x; bestY = c.y; }
   }
 
@@ -606,18 +615,46 @@ bubbleData.forEach((t, i) => {
   const inner = document.createElement('div');
   inner.className = 'bubble-inner';
 
-  // Logo image
+  // Logo image — try high-res sources in order
   const img = document.createElement('img');
-  img.src = `https://www.google.com/s2/favicons?domain=${t.domain}&sz=64`;
+  const iconSize = Math.round(Math.max(d * 0.52, 64));
   img.alt = t.name;
-  img.width  = Math.round(d * 0.52);
-  img.height = Math.round(d * 0.52);
+  img.width  = iconSize;
+  img.height = iconSize;
+  img.style.imageRendering = 'auto';
+
+  // Try Google favicon at 256px first, fallback to 128, then fallback letter
+  const faviconSources = [
+    `https://www.google.com/s2/favicons?domain=${t.domain}&sz=256`,
+    `https://www.google.com/s2/favicons?domain=${t.domain}&sz=128`,
+  ];
+  let srcIndex = 0;
+  img.src = faviconSources[srcIndex];
+
   img.onerror = () => {
+    srcIndex++;
+    if (srcIndex < faviconSources.length) {
+      img.src = faviconSources[srcIndex];
+      return;
+    }
+    // All sources failed — show styled letter fallback
     img.style.display = 'none';
     const fb = document.createElement('div');
-    fb.style.cssText = `font-size:${Math.round(d*0.36)}px; color:rgba(${hexToRgb(t.color)},0.9);`;
-    fb.textContent = t.name[0];
+    fb.style.cssText = `
+      font-size:${Math.round(d*0.36)}px;
+      font-weight:700;
+      color:rgba(${hexToRgb(t.color)},0.95);
+      text-shadow: 0 0 ${Math.round(d*0.15)}px rgba(${hexToRgb(t.color)},0.5);
+    `;
+    fb.textContent = t.name[0].toUpperCase();
     inner.appendChild(fb);
+  };
+
+  // Also detect generic globe icon (7×7 or tiny images) and replace with letter
+  img.onload = () => {
+    if (img.naturalWidth <= 16 && img.naturalHeight <= 16) {
+      img.onerror();
+    }
   };
 
   inner.appendChild(img);
@@ -667,7 +704,7 @@ loadAndBuild();
 const tt = document.getElementById('tt');
 
 function showTT(cx, cy, t) {
-  document.getElementById('tt-img').src = `https://www.google.com/s2/favicons?domain=${t.domain}&sz=64`;
+  document.getElementById('tt-img').src = `https://www.google.com/s2/favicons?domain=${t.domain}&sz=128`;
   document.getElementById('tt-name').textContent    = t.name;
   document.getElementById('tt-company').textContent = `${t.company} · ${t.cat}`;
   document.getElementById('tt-fill').style.cssText  = `width:${t.score}%; background: linear-gradient(90deg, ${t.color}, ${t.color}88);`;
