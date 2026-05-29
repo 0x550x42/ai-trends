@@ -221,7 +221,7 @@
   .tt-pill b { color:#94a3b8; font-weight:500; }
 
   /* ── Mobile ──────────────────────────────────────────── */
-  @media (max-width: 768px) {
+  @media (max-width: 1024px) {
     #title-block h1 { font-size: 12px; white-space: nowrap; }
     #title-block .date { font-size: 9px; }
     #title-block .subtitle { display: none; }
@@ -706,7 +706,7 @@ function build() {
 // Place largest bubble at center, then greedily place each next bubble
 // as close to center as possible without overlapping any placed bubble.
 
-const isMobile = window.innerWidth <= 768;
+const isMobile = window.innerWidth <= 1024;
 const HEADER_H = isMobile ? 55 : 80;
 const FOOTER_H = isMobile ? 55 : 75;
 const cx0 = W / 2, cy0 = HEADER_H + (H - HEADER_H - FOOTER_H) / 2;
@@ -714,8 +714,8 @@ const cx0 = W / 2, cy0 = HEADER_H + (H - HEADER_H - FOOTER_H) / 2;
 // Elliptical distance — biases packing into an oval shape
 // a = horizontal radius weight, b = vertical radius weight
 function hexDist(dx, dy) {
-  const a = 1.0; // horizontal stretch
-  const b = 0.65; // vertical compression → wider oval
+  const a = isMobile ? 1.0 : 1.0;  // horizontal
+  const b = isMobile ? 0.9 : 0.65; // more circular on mobile
   return Math.sqrt((dx / a) ** 2 + (dy / b) ** 2);
 }
 
