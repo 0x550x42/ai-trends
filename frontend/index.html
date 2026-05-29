@@ -35,6 +35,13 @@
     overflow: hidden;
     width: 100vw; height: 100vh;
   }
+  #bg-image {
+    position: fixed;
+    inset: 0;
+    background: url('/bg.png') center center / cover no-repeat;
+    opacity: 0.45;
+    z-index: 0;
+  }
 
   #title-block {
     position: fixed;
@@ -95,7 +102,7 @@
   }
   #footer a:hover { color: #4dd9ff; }
 
-  canvas { display:block; position:absolute; top:0; left:0; }
+  canvas { display:block; position:absolute; top:0; left:0; background: transparent !important; }
 
   /* Bubble wrappers */
   .bubble {
@@ -406,6 +413,7 @@
 </head>
 <body>
 
+<div id="bg-image"></div>
 <canvas id="bg"></canvas>
 
 <div id="title-block">
@@ -597,14 +605,7 @@ function setSize() {
 
 function drawBg() {
   ctx.clearRect(0,0,W,H);
-
-  // Base gradient
-  const grad = ctx.createRadialGradient(W*0.5, H*0.5, 0, W*0.5, H*0.5, W*0.65);
-  grad.addColorStop(0,   '#051828');
-  grad.addColorStop(0.5, '#030f1e');
-  grad.addColorStop(1,   '#010810');
-  ctx.fillStyle = grad;
-  ctx.fillRect(0,0,W,H);
+  // Background image is set via CSS — canvas is transparent
 
   // Grid
   ctx.lineWidth = 0.5;
@@ -634,14 +635,6 @@ function drawBg() {
   }
   ctx.restore();
 
-  // Corner decorations (data readouts)
-  ctx.font = '8px monospace';
-  ctx.fillStyle = 'rgba(0,180,255,0.18)';
-  const lines = ['SYS: ACTIVE', 'NODES: 20', 'REFRESH: 6H', 'SRC: GTRENDS'];
-  lines.forEach((l,i) => { ctx.fillText(l, 14, 56 + i*14); });
-
-  const lines2 = ['LAT: 28.6°N', 'LNG: 77.2°E', 'v2.4.1'];
-  lines2.forEach((l,i) => { ctx.fillText(l, W-70, 56 + i*14); });
 }
 
 // ── Bubble layout ────────────────────────────────────────────────
@@ -697,12 +690,12 @@ function build() {
 const HEADER_H = 80, FOOTER_H = 75; // extra for ticker
 const cx0 = W / 2, cy0 = HEADER_H + (H - HEADER_H - FOOTER_H) / 2;
 
-// Hexagonal distance — biases packing into a flat-top hexagon shape
+// Elliptical distance — biases packing into an oval shape
+// a = horizontal radius weight, b = vertical radius weight
 function hexDist(dx, dy) {
-  const scaleY = 1.1; // slightly taller hex to account for header offset
-  const x = Math.abs(dx);
-  const y = Math.abs(dy * scaleY);
-  return Math.max(y, x * 0.866 + y * 0.5);
+  const a = 1.0; // horizontal stretch
+  const b = 0.65; // vertical compression → wider oval
+  return Math.sqrt((dx / a) ** 2 + (dy / b) ** 2);
 }
 
 bubbleData = TOOLS.map(t => ({
