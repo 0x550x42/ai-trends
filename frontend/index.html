@@ -212,6 +212,196 @@
     color:#64748b;
   }
   .tt-pill b { color:#94a3b8; font-weight:500; }
+
+  /* ── Ticker ─────────────────────────────────────────── */
+  #ticker-wrap {
+    position: fixed;
+    bottom: 36px;
+    left: 0; right: 0;
+    height: 28px;
+    overflow: hidden;
+    z-index: 100;
+    background: rgba(3,13,26,0.85);
+    border-top: 1px solid rgba(0,180,255,0.08);
+    border-bottom: 1px solid rgba(0,180,255,0.08);
+    display: flex;
+    align-items: center;
+  }
+  #ticker-label {
+    flex-shrink: 0;
+    font-size: 9px;
+    font-weight: 700;
+    letter-spacing: 0.15em;
+    color: #4dd9ff;
+    padding: 0 12px;
+    border-right: 1px solid rgba(0,180,255,0.15);
+    white-space: nowrap;
+  }
+  #ticker-track {
+    display: flex;
+    gap: 0;
+    animation: ticker-scroll 60s linear infinite;
+    will-change: transform;
+  }
+  #ticker-wrap:hover #ticker-track { animation-play-state: paused; }
+  @keyframes ticker-scroll {
+    0%   { transform: translateX(0); }
+    100% { transform: translateX(-50%); }
+  }
+  .tick-item {
+    display: inline-flex;
+    align-items: center;
+    gap: 5px;
+    padding: 0 18px;
+    font-size: 10px;
+    white-space: nowrap;
+    cursor: pointer;
+    border-right: 1px solid rgba(255,255,255,0.04);
+  }
+  .tick-item:hover { background: rgba(255,255,255,0.04); }
+  .tick-name  { color: #cbd5e1; font-weight: 600; }
+  .tick-score { color: #64748b; }
+  .tick-trend { font-weight: 700; font-size: 9px; }
+  .tick-up    { color: #4ade80; }
+  .tick-down  { color: #f87171; }
+  .tick-flat  { color: #64748b; }
+
+  /* ── Tool of the Day ─────────────────────────────────── */
+  #totd {
+    position: fixed;
+    top: 90px; right: 18px;
+    width: 200px;
+    background: rgba(5,18,38,0.95);
+    border: 1px solid rgba(255,200,50,0.25);
+    border-radius: 14px;
+    padding: 14px;
+    z-index: 100;
+    backdrop-filter: blur(16px);
+    box-shadow: 0 0 24px rgba(255,180,0,0.08);
+    cursor: pointer;
+    transition: border-color 0.2s;
+  }
+  #totd:hover { border-color: rgba(255,200,50,0.5); }
+  #totd-label {
+    font-size: 8px;
+    font-weight: 700;
+    letter-spacing: 0.18em;
+    color: #f59e0b;
+    text-transform: uppercase;
+    margin-bottom: 8px;
+  }
+  #totd-head { display:flex; align-items:center; gap:8px; margin-bottom:8px; }
+  #totd-img  { width:32px; height:32px; border-radius:50%; object-fit:contain; background:rgba(255,255,255,0.05); }
+  #totd-name { font-size:13px; font-weight:700; color:#f1f5f9; }
+  #totd-company { font-size:10px; color:#475569; }
+  #totd-trend {
+    font-size: 11px; font-weight:700; color:#4ade80;
+    margin-bottom: 6px;
+  }
+  #totd-desc { font-size:10px; color:#64748b; line-height:1.5; margin-bottom:10px; }
+  #totd-share {
+    font-size: 9px;
+    color: #4dd9ff;
+    background: rgba(77,217,255,0.08);
+    border: 1px solid rgba(77,217,255,0.2);
+    border-radius: 20px;
+    padding: 3px 10px;
+    cursor: pointer;
+    display: inline-block;
+  }
+  #totd-share:hover { background: rgba(77,217,255,0.15); }
+
+  /* ── Category Filter ─────────────────────────────────── */
+  #cat-filter {
+    position: fixed;
+    top: 90px; left: 18px;
+    display: flex;
+    flex-direction: column;
+    gap: 5px;
+    z-index: 100;
+  }
+  .cat-btn {
+    font-size: 9px;
+    font-weight: 600;
+    letter-spacing: 0.1em;
+    padding: 4px 10px;
+    border-radius: 20px;
+    border: 1px solid rgba(255,255,255,0.08);
+    background: rgba(3,13,26,0.8);
+    color: #475569;
+    cursor: pointer;
+    transition: all 0.2s;
+    white-space: nowrap;
+    backdrop-filter: blur(8px);
+  }
+  .cat-btn:hover  { border-color: rgba(255,255,255,0.2); color: #94a3b8; }
+  .cat-btn.active { border-color: #4dd9ff; color: #4dd9ff; background: rgba(77,217,255,0.1); }
+
+  .bubble { transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1), opacity 0.3s ease; }
+  .bubble.faded { opacity: 0.08; pointer-events: none; }
+
+  /* ── Embed modal ─────────────────────────────────────── */
+  #embed-btn {
+    position: fixed;
+    bottom: 12px; right: 18px;
+    font-size: 9px; font-weight:600;
+    letter-spacing: 0.1em;
+    color: #2a5a7a;
+    background: rgba(3,13,26,0.75);
+    border: 1px solid rgba(0,180,255,0.1);
+    border-radius: 20px;
+    padding: 4px 10px;
+    cursor: pointer;
+    z-index: 100;
+    backdrop-filter: blur(8px);
+  }
+  #embed-btn:hover { color: #4dd9ff; border-color: rgba(77,217,255,0.3); }
+  #embed-modal {
+    display: none;
+    position: fixed;
+    inset: 0;
+    background: rgba(0,0,0,0.7);
+    z-index: 500;
+    align-items: center;
+    justify-content: center;
+  }
+  #embed-modal.show { display: flex; }
+  #embed-box {
+    background: rgba(5,18,38,0.98);
+    border: 1px solid rgba(0,180,255,0.2);
+    border-radius: 16px;
+    padding: 24px;
+    width: 480px;
+    max-width: 90vw;
+    backdrop-filter: blur(20px);
+  }
+  #embed-box h3 { font-size:14px; color:#f1f5f9; margin-bottom:6px; }
+  #embed-box p  { font-size:11px; color:#64748b; margin-bottom:14px; }
+  #embed-code {
+    width: 100%;
+    background: rgba(0,0,0,0.4);
+    border: 1px solid rgba(255,255,255,0.08);
+    border-radius: 8px;
+    color: #4dd9ff;
+    font-size: 11px;
+    font-family: monospace;
+    padding: 10px;
+    resize: none;
+    height: 72px;
+  }
+  #embed-actions { display:flex; gap:8px; margin-top:12px; }
+  .embed-copy-btn {
+    font-size:11px; padding:6px 16px; border-radius:20px;
+    background: rgba(77,217,255,0.12);
+    border: 1px solid rgba(77,217,255,0.3);
+    color:#4dd9ff; cursor:pointer;
+  }
+  .embed-close-btn {
+    font-size:11px; padding:6px 16px; border-radius:20px;
+    background: rgba(255,255,255,0.05);
+    border: 1px solid rgba(255,255,255,0.1);
+    color:#64748b; cursor:pointer;
+  }
 </style>
 </head>
 <body>
@@ -226,8 +416,49 @@
 
 <div id="scene"></div>
 
+<!-- Category Filter -->
+<div id="cat-filter"></div>
+
+<!-- Tool of the Day -->
+<div id="totd">
+  <div id="totd-label">🔥 Tool of the Day</div>
+  <div id="totd-head">
+    <img id="totd-img" src="" alt=""/>
+    <div>
+      <div id="totd-name"></div>
+      <div id="totd-company"></div>
+    </div>
+  </div>
+  <div id="totd-trend"></div>
+  <div id="totd-desc"></div>
+  <div id="totd-share">⬡ Share</div>
+</div>
+
+<!-- Ticker -->
+<div id="ticker-wrap">
+  <div id="ticker-label">AI PULSE</div>
+  <div id="ticker-track"></div>
+</div>
+
+<!-- Footer -->
 <div id="footer">
   © 2026 Prompt Universe &nbsp;·&nbsp; <a href="/privacy.html">Privacy Policy</a>
+</div>
+
+<!-- Embed button -->
+<div id="embed-btn">&#60;/&#62; Embed</div>
+
+<!-- Embed modal -->
+<div id="embed-modal">
+  <div id="embed-box">
+    <h3>Embed Prompt Universe</h3>
+    <p>Copy and paste this snippet into your blog, newsletter or website.</p>
+    <textarea id="embed-code" readonly></textarea>
+    <div id="embed-actions">
+      <button class="embed-copy-btn" onclick="copyEmbed()">Copy Code</button>
+      <button class="embed-close-btn" onclick="closeEmbed()">Close</button>
+    </div>
+  </div>
 </div>
 
 <div class="tooltip" id="tt">
@@ -446,6 +677,9 @@ async function loadAndBuild() {
   TOOLS.sort((a, b) => b.score - a.score);
   TOOLS.forEach((t, i) => t.rank = i + 1);
   build();
+  buildTicker();
+  buildTOTD();
+  buildCatFilter();
   requestAnimationFrame(floatLoop);
 }
 
@@ -460,7 +694,7 @@ function build() {
 // Place largest bubble at center, then greedily place each next bubble
 // as close to center as possible without overlapping any placed bubble.
 
-const HEADER_H = 80, FOOTER_H = 40;
+const HEADER_H = 80, FOOTER_H = 75; // extra for ticker
 const cx0 = W / 2, cy0 = HEADER_H + (H - HEADER_H - FOOTER_H) / 2;
 
 // Hexagonal distance — biases packing into a flat-top hexagon shape
@@ -701,6 +935,113 @@ function floatLoop(ts) {
   });
   requestAnimationFrame(floatLoop);
 }
+
+// ── Ticker ────────────────────────────────────────────────────────
+function buildTicker() {
+  const track = document.getElementById('ticker-track');
+  if (!track || !bubbleData.length) return;
+  const sorted = [...bubbleData].sort((a,b) => b.score - a.score);
+  // Duplicate items for seamless loop
+  const items = [...sorted, ...sorted].map(t => {
+    const div = document.createElement('div');
+    div.className = 'tick-item';
+    const trendClass = t.trend > 0 ? 'tick-up' : t.trend < 0 ? 'tick-down' : 'tick-flat';
+    const trendIcon  = t.trend > 0 ? '▲' : t.trend < 0 ? '▼' : '–';
+    div.innerHTML = `
+      <span class="tick-name">${t.name}</span>
+      <span class="tick-score">${t.score}</span>
+      <span class="tick-trend ${trendClass}">${trendIcon}${Math.abs(t.trend)}%</span>
+    `;
+    div.addEventListener('click', () => {
+      const b = bubbleData.find(b => b.name === t.name);
+      if (b && b.el) b.el.dispatchEvent(new MouseEvent('mouseenter', { clientX: window.innerWidth/2, clientY: window.innerHeight/2 }));
+    });
+    return div;
+  });
+  track.innerHTML = '';
+  items.forEach(el => track.appendChild(el));
+  // Adjust animation speed based on content width
+  const totalW = track.scrollWidth / 2;
+  const speed = totalW / 80; // px per second
+  track.style.animationDuration = `${speed}s`;
+}
+
+// ── Tool of the Day ───────────────────────────────────────────────
+function buildTOTD() {
+  if (!TOOLS.length) return;
+  const totd = [...TOOLS].sort((a,b) => (b.trend||0) - (a.trend||0))[0];
+  document.getElementById('totd-img').src     = `https://www.google.com/s2/favicons?domain=${totd.domain}&sz=128`;
+  document.getElementById('totd-name').textContent    = totd.name;
+  document.getElementById('totd-company').textContent = totd.company;
+  document.getElementById('totd-trend').textContent   = `▲ ${totd.trend}% trending today`;
+  document.getElementById('totd-desc').textContent    = totd.desc;
+
+  // Clicking TOTD highlights its bubble
+  document.getElementById('totd').addEventListener('click', () => {
+    const b = bubbleData.find(b => b.name === totd.name);
+    if (b && b.el) {
+      const rect = b.el.getBoundingClientRect();
+      showTT(rect.left + rect.width/2, rect.top + rect.height/2, b);
+    }
+  });
+
+  // Share button
+  document.getElementById('totd-share').addEventListener('click', e => {
+    e.stopPropagation();
+    const url = `https://promptuniverse.fun/?tool=${encodeURIComponent(totd.name)}`;
+    navigator.clipboard?.writeText(url).then(() => {
+      document.getElementById('totd-share').textContent = '✓ Copied!';
+      setTimeout(() => document.getElementById('totd-share').textContent = '⬡ Share', 2000);
+    });
+  });
+}
+
+// ── Category Filter ───────────────────────────────────────────────
+let activeCategory = 'All';
+
+function buildCatFilter() {
+  const wrap = document.getElementById('cat-filter');
+  if (!wrap) return;
+  const cats = ['All', ...new Set(TOOLS.map(t => t.cat || t.category).filter(Boolean).sort())];
+  wrap.innerHTML = '';
+  cats.forEach(cat => {
+    const btn = document.createElement('div');
+    btn.className = 'cat-btn' + (cat === activeCategory ? ' active' : '');
+    btn.textContent = cat;
+    btn.addEventListener('click', () => {
+      activeCategory = cat;
+      document.querySelectorAll('.cat-btn').forEach(b => b.classList.remove('active'));
+      btn.classList.add('active');
+      bubbleData.forEach(b => {
+        if (!b.el) return;
+        const match = cat === 'All' || (b.cat || b.category) === cat;
+        b.el.classList.toggle('faded', !match);
+      });
+    });
+    wrap.appendChild(btn);
+  });
+}
+
+// ── Embed Widget ──────────────────────────────────────────────────
+document.getElementById('embed-btn').addEventListener('click', () => {
+  const code = `<iframe src="https://promptuniverse.fun/embed.html" width="100%" height="500" frameborder="0" style="border-radius:12px;overflow:hidden;" title="AI Popularity Pulse"></iframe>`;
+  document.getElementById('embed-code').value = code;
+  document.getElementById('embed-modal').classList.add('show');
+});
+
+function copyEmbed() {
+  const ta = document.getElementById('embed-code');
+  ta.select();
+  navigator.clipboard?.writeText(ta.value);
+  document.querySelector('.embed-copy-btn').textContent = '✓ Copied!';
+  setTimeout(() => document.querySelector('.embed-copy-btn').textContent = 'Copy Code', 2000);
+}
+function closeEmbed() {
+  document.getElementById('embed-modal').classList.remove('show');
+}
+document.getElementById('embed-modal').addEventListener('click', e => {
+  if (e.target === document.getElementById('embed-modal')) closeEmbed();
+});
 
 // ── Boot — fetch from worker then build ──────────────────────────
 loadAndBuild();

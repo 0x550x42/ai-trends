@@ -1,0 +1,181 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8"/>
+<meta name="viewport" content="width=device-width, initial-scale=1.0"/>
+<title>AI Popularity Pulse — Prompt Universe</title>
+<style>
+  * { margin:0; padding:0; box-sizing:border-box; }
+  body {
+    background: #030d1a;
+    font-family: 'Inter', -apple-system, sans-serif;
+    color: #fff;
+    overflow: hidden;
+    width: 100%; height: 100vh;
+  }
+  #title-block {
+    position: fixed;
+    top: 10px; left: 50%;
+    transform: translateX(-50%);
+    text-align: center;
+    z-index: 100;
+    pointer-events: none;
+  }
+  #title-block h1 {
+    font-size: 11px;
+    font-weight: 800;
+    letter-spacing: 0.2em;
+    text-transform: uppercase;
+    background: linear-gradient(90deg, #4dd9ff, #a78bfa, #4dd9ff);
+    -webkit-background-clip: text;
+    -webkit-text-fill-color: transparent;
+    background-size: 200% auto;
+    animation: shimmer 4s linear infinite;
+  }
+  @keyframes shimmer { to { background-position: 200% center; } }
+  #title-block .date { font-size:8px; color:#2a6a8a; margin-top:2px; letter-spacing:0.15em; }
+  canvas { display:block; position:absolute; top:0; left:0; }
+  .bubble {
+    position: absolute;
+    border-radius: 50%;
+    display: flex;
+    align-items: center;
+    justify-content: center;
+    cursor: pointer;
+    will-change: transform;
+    transform: translate(-50%, -50%);
+    transition: transform 0.35s cubic-bezier(0.34,1.56,0.64,1);
+  }
+  .bubble:hover { transform: translate(-50%, -50%) scale(1.12) !important; z-index:50; }
+  .bubble-inner {
+    width:100%; height:100%; border-radius:50%;
+    display:flex; align-items:center; justify-content:center;
+    position:relative; overflow:hidden;
+  }
+  .bubble img {
+    max-width:52% !important; max-height:52% !important;
+    width:auto !important; height:auto !important;
+    object-fit:contain; display:block;
+  }
+  .bubble-inner::before {
+    content:''; position:absolute; inset:0; border-radius:50%;
+    background:radial-gradient(circle at 35% 30%, rgba(255,255,255,0.12), transparent 60%);
+    z-index:2; pointer-events:none;
+  }
+  #watermark {
+    position:fixed; bottom:6px; right:10px;
+    font-size:9px; color:#1e3a52; z-index:100;
+    text-decoration:none;
+  }
+  #watermark:hover { color:#4dd9ff; }
+</style>
+</head>
+<body>
+<canvas id="bg"></canvas>
+<div id="title-block">
+  <h1>AI Popularity Pulse</h1>
+  <div class="date" id="subtitle"></div>
+</div>
+<div id="scene"></div>
+<a href="https://promptuniverse.fun" target="_blank" id="watermark">promptuniverse.fun</a>
+
+<script>
+const WORKER_URL = 'https://ai-trends-worker.ud0103.workers.dev';
+let TOOLS = [];
+let bubbleData = [];
+const bg  = document.getElementById('bg');
+const ctx = bg.getContext('2d');
+let W, H;
+
+function setSize() { W = bg.width = window.innerWidth; H = bg.height = window.innerHeight; }
+function hexToRgb(hex) {
+  const h = hex.replace('#','');
+  return `${parseInt(h.slice(0,2),16)},${parseInt(h.slice(2,4),16)},${parseInt(h.slice(4,6),16)}`;
+}
+function drawBg() {
+  ctx.clearRect(0,0,W,H);
+  const g = ctx.createRadialGradient(W*.5,H*.5,0,W*.5,H*.5,W*.7);
+  g.addColorStop(0,'#060d1f'); g.addColorStop(1,'#010508');
+  ctx.fillStyle=g; ctx.fillRect(0,0,W,H);
+}
+
+function build() {
+  setSize();
+  const maxR = Math.min(W,H)*0.08, minR = Math.min(W,H)*0.012;
+  const maxScore = 98, HEADER_H = 40, FOOTER_H = 20;
+  const cx0 = W/2, cy0 = HEADER_H+(H-HEADER_H-FOOTER_H)/2;
+  bubbleData = TOOLS.map(t=>({...t, r:minR+(t.score/maxScore)*(maxR-minR), x:cx0, y:cy0,
+    floatOffset:Math.random()*Math.PI*2, floatSpeed:0.25+Math.random()*0.2, floatAmp:3+Math.random()*3}));
+  const placed=[bubbleData[0]];
+  bubbleData[0].x=cx0; bubbleData[0].y=cy0;
+  function overlaps(x,y,r,arr){for(const p of arr){const dx=x-p.x,dy=y-p.y;if(dx*dx+dy*dy<(r+p.r+2)**2)return true;}return false;}
+  function hexDist(dx,dy){const x=Math.abs(dx),y=Math.abs(dy*1.1);return Math.max(y,x*0.866+y*0.5);}
+  for(let i=1;i<bubbleData.length;i++){
+    const b=bubbleData[i]; let bestX=cx0,bestY=cy0,bestDist=Infinity;
+    const cands=[];
+    for(const p of placed){const td=p.r+b.r+2;for(let a=0;a<Math.PI*2;a+=0.2)cands.push({x:p.x+Math.cos(a)*td,y:p.y+Math.sin(a)*td});}
+    for(const c of cands){
+      if(overlaps(c.x,c.y,b.r,placed))continue;
+      if(c.y-b.r<HEADER_H||c.y+b.r>H-FOOTER_H)continue;
+      if(c.x-b.r<0||c.x+b.r>W)continue;
+      const d=hexDist(c.x-cx0,c.y-cy0);
+      if(d<bestDist){bestDist=d;bestX=c.x;bestY=c.y;}
+    }
+    b.x=bestX;b.y=bestY;placed.push(b);
+  }
+  const ccx=bubbleData.reduce((s,b)=>s+b.x,0)/bubbleData.length;
+  const ccy=bubbleData.reduce((s,b)=>s+b.y,0)/bubbleData.length;
+  bubbleData.forEach(b=>{b.x+=cx0-ccx;b.y+=cy0-ccy;});
+  drawBg();
+  const scene=document.getElementById('scene');
+  scene.innerHTML='';
+  bubbleData.forEach(t=>{
+    const d=t.r*2, el=document.createElement('div');
+    el.className='bubble';
+    el.style.cssText=`left:${t.x}px;top:${t.y}px;width:${d}px;height:${d}px;
+      box-shadow:0 0 ${t.r*.7}px rgba(${hexToRgb(t.color)},.5),0 0 ${t.r*1.8}px rgba(${hexToRgb(t.color)},.15);
+      border:1.5px solid rgba(${hexToRgb(t.color)},.8);
+      background:radial-gradient(circle at 40% 35%,rgba(${hexToRgb(t.color)},.25),rgba(${hexToRgb(t.color)},.08) 50%,rgba(0,0,0,.6));`;
+    const inner=document.createElement('div'); inner.className='bubble-inner';
+    const img=document.createElement('img');
+    img.src=`https://www.google.com/s2/favicons?domain=${t.domain}&sz=128`;
+    img.alt=t.name;
+    img.onerror=()=>{img.style.display='none';const fb=document.createElement('div');fb.style.cssText=`font-size:${Math.round(d*.34)}px;font-weight:700;color:rgba(${hexToRgb(t.color)},.9);`;fb.textContent=t.name[0];inner.appendChild(fb);};
+    inner.appendChild(img); el.appendChild(inner);
+    el.addEventListener('click',()=>window.open(`https://${t.domain}`,'_blank'));
+    scene.appendChild(el); bubbleData[bubbleData.indexOf(t)].el=el;
+    el.style.left=t.x+'px'; el.style.top=t.y+'px';
+  });
+}
+
+let t0=null;
+function floatLoop(ts){
+  if(!t0)t0=ts; const e=(ts-t0)/1000;
+  bubbleData.forEach(b=>{if(!b.el)return;
+    const dx=Math.cos(e*b.floatSpeed*.7+b.floatOffset)*b.floatAmp;
+    const dy=Math.sin(e*b.floatSpeed+b.floatOffset)*b.floatAmp;
+    b.el.style.transform=`translate(calc(-50% + ${dx.toFixed(2)}px),calc(-50% + ${dy.toFixed(2)}px))`;
+  });
+  requestAnimationFrame(floatLoop);
+}
+
+async function init(){
+  try{
+    const res=await fetch(`${WORKER_URL}/trends`);
+    const data=await res.json();
+    if(Array.isArray(data.tools)&&data.tools.length>0){
+      TOOLS=data.tools.map(t=>({...t,cat:t.category||t.cat||'Other',color:t.color||'#4dd9ff'}));
+      const d=new Date(data.generatedAt);
+      const el=document.getElementById('subtitle');
+      if(el) el.textContent=d.toLocaleDateString('en-US',{month:'short',day:'numeric',year:'numeric'});
+    }
+  }catch(e){}
+  TOOLS.sort((a,b)=>b.score-a.score);
+  build();
+  requestAnimationFrame(floatLoop);
+}
+window.addEventListener('resize',()=>{ clearTimeout(window._rt); window._rt=setTimeout(init,250); });
+init();
+</script>
+</body>
+</html>
