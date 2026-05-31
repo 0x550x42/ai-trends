@@ -41,6 +41,24 @@ async function fetchTrendsFromLLM(env) {
     throw new Error('LLM returned invalid tools shape')
   }
 
+  // Deduplicate — strip version numbers, match by name and domain
+  const seenNames   = new Set()
+  const seenDomains = new Set()
+  const baseName = n => n?.toLowerCase().trim().replace(/\s*(v\d+[\.\d]*|\d+(\.\d+)*)$/i, '').trim()
+  parsed.tools = parsed.tools.filter(t => {
+    const name   = t.name?.toLowerCase().trim()
+    const base   = baseName(t.name)
+    const domain = t.domain?.toLowerCase().trim()
+    if (!name || seenNames.has(name) || seenNames.has(base) || (domain && seenDomains.has(domain))) return false
+    seenNames.add(name)
+    seenNames.add(base)
+    if (domain) seenDomains.add(domain)
+    return true
+  })
+
+  // Trim to exactly 100
+  parsed.tools = parsed.tools.slice(0, 100)
+
   parsed.generatedAt = new Date().toISOString()
   console.log(`[trends] Got ${parsed.tools.length} unique tools from ${provider.name}`)
   return parsed
