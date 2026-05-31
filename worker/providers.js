@@ -3,38 +3,34 @@
 // Default: "openai"
 
 const openai = {
-  name: 'OpenAI GPT-4o',
+  name: 'OpenAI GPT-4o + Web Search',
 
   buildRequest(prompt, apiKey) {
     return {
-      url: 'https://api.openai.com/v1/chat/completions',
+      url: 'https://api.openai.com/v1/responses',
       headers: {
         'Authorization': `Bearer ${apiKey}`,
         'Content-Type': 'application/json',
       },
       body: JSON.stringify({
         model: 'gpt-4o',
-        messages: [
-          {
-            role: 'system',
-            content: 'You are an AI trends analyst. Always respond with valid JSON only. No markdown, no explanation, no code fences. Just raw JSON.',
-          },
-          { role: 'user', content: prompt },
-        ],
-        response_format: { type: 'json_object' },
-        max_tokens: 16000,
-        temperature: 0.2,
+        tools: [{ type: 'web_search_preview' }],
+        input: prompt,
       }),
     }
   },
 
   parseResponse(data) {
-    const content = data.choices?.[0]?.message?.content
-    if (!content) {
-      const reason = data.choices?.[0]?.finish_reason
-      throw new Error(`OpenAI: empty response. finish_reason: ${reason}`)
-    }
-    return JSON.parse(content)
+    // Find the last message block with output_text
+    const messages = data.output?.filter(b => b.type === 'message') || []
+    const last = messages[messages.length - 1]
+    const text = last?.content?.find(c => c.type === 'output_text')?.text
+    if (!text) throw new Error('OpenAI: no text output in response')
+    // Strip markdown fences if present
+    const clean = text.replace(/```json|```/g, '').trim()
+    const parsed = JSON.parse(clean)
+    // Response may be an array or {tools:[...]}
+    return Array.isArray(parsed) ? { tools: parsed } : parsed
   },
 }
 
