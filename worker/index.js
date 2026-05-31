@@ -42,7 +42,7 @@ async function fetchTrendsFromLLM(env) {
   }
 
   parsed.generatedAt = new Date().toISOString()
-  console.log(`[trends] Got ${parsed.tools.length} tools from ${provider.name}`)
+  console.log(`[trends] Got ${parsed.tools.length} unique tools from ${provider.name}`)
   return parsed
 }
 
