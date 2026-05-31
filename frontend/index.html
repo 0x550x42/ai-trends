@@ -881,6 +881,7 @@ bubbleData.forEach((t, i) => {
 
   // Try Google favicon at 256px first, fallback to 128, then fallback letter
   const faviconSources = [
+    `https://logo.clearbit.com/${t.domain}`,
     `https://www.google.com/s2/favicons?domain=${t.domain}&sz=256`,
     `https://www.google.com/s2/favicons?domain=${t.domain}&sz=128`,
   ];
@@ -987,7 +988,7 @@ function buildTicker() {
 function buildTOTD() {
   if (!TOOLS.length) return;
   const totd = [...TOOLS].sort((a,b) => (b.trend||0) - (a.trend||0))[0];
-  document.getElementById('totd-img').src     = `https://www.google.com/s2/favicons?domain=${totd.domain}&sz=128`;
+  document.getElementById('totd-img').src     = `https://logo.clearbit.com/${totd.domain}`;
   document.getElementById('totd-name').textContent    = totd.name;
   document.getElementById('totd-company').textContent = totd.company;
   document.getElementById('totd-trend').textContent   = `▲ ${totd.trend}% trending today`;
@@ -1067,7 +1068,9 @@ loadAndBuild();
 const tt = document.getElementById('tt');
 
 function showTT(cx, cy, t) {
-  document.getElementById('tt-img').src = `https://www.google.com/s2/favicons?domain=${t.domain}&sz=128`;
+  const ttImg = document.getElementById('tt-img');
+  ttImg.src = `https://logo.clearbit.com/${t.domain}`;
+  ttImg.onerror = () => { ttImg.src = `https://www.google.com/s2/favicons?domain=${t.domain}&sz=128`; };
   document.getElementById('tt-name').textContent    = t.name;
   document.getElementById('tt-company').textContent = `${t.company} · ${t.cat}`;
   document.getElementById('tt-fill').style.cssText  = `width:${t.score}%; background: linear-gradient(90deg, ${t.color}, ${t.color}88);`;
