@@ -16,6 +16,7 @@ const openai = {
         model: 'gpt-4o',
         tools: [{ type: 'web_search_preview' }],
         input: prompt,
+        max_output_tokens: 16000,
       }),
     }
   },
