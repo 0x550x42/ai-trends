@@ -881,13 +881,21 @@ bubbleData.forEach((t, i) => {
 
   // Root domain (strips subdomains like gemini.google.com → google.com)
   const rootDomain = t.domain.split('.').slice(-2).join('.');
+  // Slug guess from the tool name (e.g. "Grok" → "grok") for fallback domains
+  const slug = (t.id || t.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
 
-  // Multi-source icon chain — unavatar aggregates clearbit/google/duckduckgo/twitter
+  // Multi-source icon chain — unavatar aggregates clearbit/google/twitter
   const faviconSources = [
     `https://unavatar.io/${t.domain}?fallback=false`,
     `https://logo.clearbit.com/${t.domain}`,
     `https://logo.clearbit.com/${rootDomain}`,
     `https://www.google.com/s2/favicons?domain=${t.domain}&sz=256`,
+    // Name-based guesses for when the LLM returns a wrong/dead domain
+    `https://unavatar.io/${slug}.com?fallback=false`,
+    `https://logo.clearbit.com/${slug}.com`,
+    `https://logo.clearbit.com/${slug}.ai`,
+    // Twitter/X handle lookup — most AI tools' handle matches their name
+    `https://unavatar.io/twitter/${slug}?fallback=false`,
     `https://www.google.com/s2/favicons?domain=${rootDomain}&sz=256`,
   ];
   let srcIndex = 0;
