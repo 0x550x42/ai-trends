@@ -49,7 +49,6 @@ const openai = {
   },
 
   parseResponse(data) {
-    // Find the last message block with output_text
     const messages = data.output?.filter(b => b.type === 'message') || []
     const last = messages[messages.length - 1]
     const text = last?.content?.find(c => c.type === 'output_text')?.text
