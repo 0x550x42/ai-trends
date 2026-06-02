@@ -41,14 +41,28 @@ async function fetchTrendsFromLLM(env) {
     throw new Error('LLM returned invalid tools shape')
   }
 
+  // Expand short keys to full keys if LLM used compact format
+  parsed.tools = parsed.tools.map(t => ({
+    id:       t.id       || t.i,
+    name:     t.name     || t.n,
+    company:  t.company  || t.c,
+    domain:   t.domain   || t.d,
+    score:    t.score    ?? t.s,
+    trend:    t.trend    ?? t.t,
+    category: t.category || t.g,
+    launched: t.launched || t.l,
+    desc:     t.desc     || t.k,
+    color:    t.color    || t.x,
+  }))
+
   // Deduplicate — strip version numbers, match by name and domain
   const seenNames   = new Set()
   const seenDomains = new Set()
   const baseName = n => n?.toLowerCase().trim().replace(/\s*(v\d+[\.\d]*|\d+(\.\d+)*)$/i, '').trim()
   parsed.tools = parsed.tools.filter(t => {
-    const name   = t.name?.toLowerCase().trim()
-    const base   = baseName(t.name)
-    const domain = t.domain?.toLowerCase().trim()
+    const name   = (t.name || t.n)?.toLowerCase().trim()
+    const base   = baseName(t.name || t.n)
+    const domain = (t.domain || t.d)?.toLowerCase().trim()
     if (!name || seenNames.has(name) || seenNames.has(base) || (domain && seenDomains.has(domain))) return false
     seenNames.add(name)
     seenNames.add(base)
