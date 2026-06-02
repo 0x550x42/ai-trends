@@ -14,55 +14,54 @@ const CORS = {
   'Content-Type':                 'application/json',
 }
 
-async function fetchTrendsFromLLM(env) {
-  const providerName = env.LLM_PROVIDER || 'openai'
-  const apiKey       = env.LLM_API_KEY
+// Expand short keys to full keys
+function expandTool(t) {
+  return {
+    id:       t.id || t.i || '',
+    name:     t.name     || t.n || '',
+    company:  t.company  || t.c || '',
+    domain:   t.domain   || t.d || '',
+    score:    t.score    ?? t.s ?? 50,
+    trend:    t.trend    ?? t.t ?? 0,
+    category: t.category || t.g || 'Assistant',
+    launched: t.launched || t.l || '2023',
+    desc:     t.desc     || t.k || '',
+    color:    t.color    || t.x || '#4dd9ff',
+  }
+}
 
-  if (!apiKey) throw new Error('LLM_API_KEY is not set. Run: npx wrangler secret put LLM_API_KEY')
-
-  const provider = getProvider(providerName)
-  const prompt   = buildPrompt(new Date().toISOString().split('T')[0])
-
-  console.log(`[trends] Calling ${provider.name}...`)
-
+async function callLLM(provider, prompt, apiKey) {
   const { url, headers, body } = provider.buildRequest(prompt, apiKey)
   const res = await fetch(url, { method: 'POST', headers, body })
-
   if (!res.ok) {
     const err = await res.text()
     throw new Error(`${provider.name} API error ${res.status}: ${err}`)
   }
-
   const data = await res.json()
-  console.log('[LLM raw response]', JSON.stringify(data))
   const parsed = provider.parseResponse(data)
+  return Array.isArray(parsed) ? parsed : (parsed.tools || [])
+}
 
-  if (!Array.isArray(parsed.tools) || parsed.tools.length === 0) {
-    throw new Error('LLM returned invalid tools shape')
-  }
+async function fetchTrendsFromLLM(env) {
+  const providerName = env.LLM_PROVIDER || 'openai'
+  const apiKey       = env.LLM_API_KEY
+  if (!apiKey) throw new Error('LLM_API_KEY is not set.')
 
-  // Expand short keys to full keys if LLM used compact format
-  parsed.tools = parsed.tools.map(t => ({
-    id:       t.id       || t.i,
-    name:     t.name     || t.n,
-    company:  t.company  || t.c,
-    domain:   t.domain   || t.d,
-    score:    t.score    ?? t.s,
-    trend:    t.trend    ?? t.t,
-    category: t.category || t.g,
-    launched: t.launched || t.l,
-    desc:     t.desc     || t.k,
-    color:    t.color    || t.x,
-  }))
+  const provider = getProvider(providerName)
+  const date     = new Date().toISOString().split('T')[0]
 
-  // Deduplicate — strip version numbers, match by name and domain
+  console.log(`[trends] Calling ${provider.name}...`)
+
+  let tools = (await callLLM(provider, buildPrompt(date), apiKey)).map(expandTool)
+
+  // Deduplicate by name and domain
   const seenNames   = new Set()
   const seenDomains = new Set()
   const baseName = n => n?.toLowerCase().trim().replace(/\s*(v\d+[\.\d]*|\d+(\.\d+)*)$/i, '').trim()
-  parsed.tools = parsed.tools.filter(t => {
-    const name   = (t.name || t.n)?.toLowerCase().trim()
-    const base   = baseName(t.name || t.n)
-    const domain = (t.domain || t.d)?.toLowerCase().trim()
+  tools = tools.filter(t => {
+    const name   = t.name?.toLowerCase().trim()
+    const base   = baseName(t.name)
+    const domain = t.domain?.toLowerCase().trim()
     if (!name || seenNames.has(name) || seenNames.has(base) || (domain && seenDomains.has(domain))) return false
     seenNames.add(name)
     seenNames.add(base)
@@ -70,12 +69,14 @@ async function fetchTrendsFromLLM(env) {
     return true
   })
 
-  // Trim to exactly 100
-  parsed.tools = parsed.tools.slice(0, 100)
+  // Sort by score and trim to 100
+  tools = tools.sort((a, b) => b.score - a.score).slice(0, 100)
 
-  parsed.generatedAt = new Date().toISOString()
-  console.log(`[trends] Got ${parsed.tools.length} unique tools from ${provider.name}`)
-  return parsed
+  if (tools.length === 0) throw new Error('LLM returned no valid tools')
+
+  const result = { tools, generatedAt: new Date().toISOString() }
+  console.log(`[trends] Got ${tools.length} unique tools from ${provider.name}`)
+  return result
 }
 
 async function refreshTrends(env) {

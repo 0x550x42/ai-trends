@@ -2,6 +2,33 @@
 // Supported values: "openai" | "claude" | "gemini"
 // Default: "openai"
 
+// Tolerant parser — salvages all complete objects even if the JSON
+// array is truncated mid-stream (e.g. token limit hit).
+function parseToolArray(text) {
+  const clean = text.replace(/```json|```/g, '').trim()
+  // Fast path: valid JSON
+  try {
+    const parsed = JSON.parse(clean)
+    return Array.isArray(parsed) ? parsed : (parsed.tools || [])
+  } catch (_) {}
+  // Salvage path: extract every complete {...} object
+  const objects = []
+  let depth = 0, start = -1
+  for (let i = 0; i < clean.length; i++) {
+    const ch = clean[i]
+    if (ch === '{') { if (depth === 0) start = i; depth++ }
+    else if (ch === '}') {
+      depth--
+      if (depth === 0 && start !== -1) {
+        try { objects.push(JSON.parse(clean.slice(start, i + 1))) } catch (_) {}
+        start = -1
+      }
+    }
+  }
+  if (objects.length === 0) throw new Error('Could not parse any tool objects from response')
+  return objects
+}
+
 const openai = {
   name: 'OpenAI GPT-4o + Web Search',
 
@@ -27,11 +54,7 @@ const openai = {
     const last = messages[messages.length - 1]
     const text = last?.content?.find(c => c.type === 'output_text')?.text
     if (!text) throw new Error('OpenAI: no text output in response')
-    // Strip markdown fences if present
-    const clean = text.replace(/```json|```/g, '').trim()
-    const parsed = JSON.parse(clean)
-    // Response may be an array or {tools:[...]}
-    return Array.isArray(parsed) ? { tools: parsed } : parsed
+    return { tools: parseToolArray(text) }
   },
 }
 
