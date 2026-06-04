@@ -849,6 +849,33 @@ function hexToRgb(hex) {
   return `${r},${g},${b}`;
 }
 
+// Build the ordered list of icon URLs to try for a given tool
+function iconSources(t) {
+  const rootDomain = t.domain.split('.').slice(-2).join('.');
+  const slug = (t.id || t.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
+  return [
+    `https://unavatar.io/${t.domain}?fallback=false`,
+    `https://logo.clearbit.com/${t.domain}`,
+    `https://logo.clearbit.com/${rootDomain}`,
+    `https://www.google.com/s2/favicons?domain=${t.domain}&sz=256`,
+    `https://unavatar.io/${slug}.com?fallback=false`,
+    `https://logo.clearbit.com/${slug}.com`,
+    `https://logo.clearbit.com/${slug}.ai`,
+    `https://unavatar.io/twitter/${slug}?fallback=false`,
+    `https://www.google.com/s2/favicons?domain=${rootDomain}&sz=256`,
+  ];
+}
+
+// Apply the fallback chain to a plain <img> (used by tooltip + Tool of the Day)
+function applyIconChain(img, t) {
+  const sources = iconSources(t);
+  let i = 0;
+  img.src = sources[0];
+  const next = () => { i++; if (i < sources.length) img.src = sources[i]; };
+  img.onerror = next;
+  img.onload = () => { if (img.naturalWidth <= 16 && img.naturalHeight <= 16) next(); };
+}
+
 function createBubbleDom() {
 bubbleData.forEach((t, i) => {
   const d = t.r * 2;
@@ -880,25 +907,8 @@ bubbleData.forEach((t, i) => {
   img.height = safeSize;
   img.style.imageRendering = 'auto';
 
-  // Root domain (strips subdomains like gemini.google.com → google.com)
-  const rootDomain = t.domain.split('.').slice(-2).join('.');
-  // Slug guess from the tool name (e.g. "Grok" → "grok") for fallback domains
-  const slug = (t.id || t.name || '').toLowerCase().replace(/[^a-z0-9]/g, '');
-
-  // Multi-source icon chain — unavatar aggregates clearbit/google/twitter
-  const faviconSources = [
-    `https://unavatar.io/${t.domain}?fallback=false`,
-    `https://logo.clearbit.com/${t.domain}`,
-    `https://logo.clearbit.com/${rootDomain}`,
-    `https://www.google.com/s2/favicons?domain=${t.domain}&sz=256`,
-    // Name-based guesses for when the LLM returns a wrong/dead domain
-    `https://unavatar.io/${slug}.com?fallback=false`,
-    `https://logo.clearbit.com/${slug}.com`,
-    `https://logo.clearbit.com/${slug}.ai`,
-    // Twitter/X handle lookup — most AI tools' handle matches their name
-    `https://unavatar.io/twitter/${slug}?fallback=false`,
-    `https://www.google.com/s2/favicons?domain=${rootDomain}&sz=256`,
-  ];
+  // Multi-source icon chain (shared helper)
+  const faviconSources = iconSources(t);
   let srcIndex = 0;
   img.src = faviconSources[srcIndex];
 
@@ -1002,7 +1012,7 @@ function buildTicker() {
 function buildTOTD() {
   if (!TOOLS.length) return;
   const totd = [...TOOLS].sort((a,b) => (b.trend||0) - (a.trend||0))[0];
-  document.getElementById('totd-img').src     = `https://unavatar.io/${totd.domain}`;
+  applyIconChain(document.getElementById('totd-img'), totd);
   document.getElementById('totd-name').textContent    = totd.name;
   document.getElementById('totd-company').textContent = totd.company;
   document.getElementById('totd-trend').textContent   = `▲ ${totd.trend}% trending today`;
@@ -1082,9 +1092,7 @@ loadAndBuild();
 const tt = document.getElementById('tt');
 
 function showTT(cx, cy, t) {
-  const ttImg = document.getElementById('tt-img');
-  ttImg.src = `https://unavatar.io/${t.domain}`;
-  ttImg.onerror = () => { ttImg.src = `https://www.google.com/s2/favicons?domain=${t.domain}&sz=128`; };
+  applyIconChain(document.getElementById('tt-img'), t);
   document.getElementById('tt-name').textContent    = t.name;
   document.getElementById('tt-company').textContent = `${t.company} · ${t.cat}`;
   document.getElementById('tt-fill').style.cssText  = `width:${t.score}%; background: linear-gradient(90deg, ${t.color}, ${t.color}88);`;
